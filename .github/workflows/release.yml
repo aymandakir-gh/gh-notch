@@ -99,21 +99,29 @@ jobs:
             --wait
           xcrun stapler staple "build/export/gh-notch.app"
 
+      # Best-effort: a failure here must NOT block the release. The DMG step
+      # falls back to a plain DMG when the background is missing.
       - name: Render DMG background (Retina)
+        continue-on-error: true
         run: |
-          set -euo pipefail
+          set -uo pipefail
           mkdir -p build/dmg
-          rsvg-convert -w 660  -h 420 installer/background.svg -o build/dmg/background.png
-          rsvg-convert -w 1320 -h 840 installer/background.svg -o build/dmg/background@2x.png
+          rsvg-convert -w 660  -h 420 installer/background.svg -o build/dmg/background.png || exit 0
+          rsvg-convert -w 1320 -h 840 installer/background.svg -o build/dmg/background@2x.png || exit 0
           tiffutil -cathidpicheck build/dmg/background.png build/dmg/background@2x.png \
-            -out build/dmg/background.tiff
+            -out build/dmg/background.tiff || exit 0
 
       - name: Create DMG
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          DMG="build/gh-notch-${GITHUB_REF_NAME}.dmg"
+          BG_ARGS=()
+          if [ -f build/dmg/background.tiff ]; then
+            BG_ARGS=(--background "build/dmg/background.tiff")
+          fi
           create-dmg \
             --volname "gh-notch" \
-            --background "build/dmg/background.tiff" \
+            "${BG_ARGS[@]}" \
             --window-pos 200 120 \
             --window-size 660 420 \
             --icon-size 120 \
@@ -122,10 +130,13 @@ jobs:
             --hide-extension "gh-notch.app" \
             --app-drop-link 495 210 \
             --no-internet-enable \
-            "build/gh-notch-${GITHUB_REF_NAME}.dmg" \
-            "build/export/" || \
-          hdiutil create -volname "gh-notch" -srcfolder "build/export/" -ov -format UDZO \
-            "build/gh-notch-${GITHUB_REF_NAME}.dmg"
+            "$DMG" \
+            "build/export/" || true
+          if [ ! -f "$DMG" ]; then
+            echo "create-dmg did not produce a DMG — falling back to plain hdiutil"
+            hdiutil create -volname "gh-notch" -srcfolder "build/export/" -ov -format UDZO "$DMG"
+          fi
+          ls -la "$DMG"
 
       - name: Attach DMG to release
         uses: softprops/action-gh-release@v2
