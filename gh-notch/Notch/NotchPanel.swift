@@ -9,6 +9,7 @@ import SwiftUI
 final class NotchPanel: NSPanel {
 
     private let viewModel: NotchViewModel
+    private var clickAwayMonitor: Any?
 
     init(viewModel: NotchViewModel) {
         self.viewModel = viewModel
@@ -38,14 +39,21 @@ final class NotchPanel: NSPanel {
             .ignoresCycle
         ]
 
-        // Re-frame the window whenever the view model expands/collapses.
+        // Re-frame the window and manage the click-away monitor on expand/collapse.
         viewModel.onLayoutChange = { [weak self] in
             self?.applyCurrentFrame()
+            self?.updateClickAwayMonitor()
+        }
+    }
+
+    deinit {
+        if let clickAwayMonitor {
+            NSEvent.removeMonitor(clickAwayMonitor)
         }
     }
 
     /// Borderless panels return `false` by default; allow key so SwiftUI focus
-    /// (e.g. the future AI command bar text field) can work when expanded.
+    /// (the command bar text field) works when expanded.
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
@@ -77,6 +85,23 @@ final class NotchPanel: NSPanel {
             }
         } else {
             setFrame(frame, display: true)
+        }
+    }
+
+    /// While expanded, watch for clicks outside the panel (i.e. in another app or
+    /// on the desktop) and collapse. Global monitors only fire for events the app
+    /// does not receive itself, so clicks inside the panel are unaffected.
+    private func updateClickAwayMonitor() {
+        if viewModel.isExpanded {
+            guard clickAwayMonitor == nil else { return }
+            clickAwayMonitor = NSEvent.addGlobalMonitorForEvents(
+                matching: [.leftMouseDown, .rightMouseDown]
+            ) { [weak self] _ in
+                self?.viewModel.collapse()
+            }
+        } else if let monitor = clickAwayMonitor {
+            NSEvent.removeMonitor(monitor)
+            clickAwayMonitor = nil
         }
     }
 }
