@@ -5,7 +5,7 @@ import SwiftUI
 /// Parses locally first (math, counts, transforms, date); unrecognized queries
 /// dispatch to the configured AI endpoint. The result line shows underneath with
 /// a badge marking on-device vs. remote, and a spinner while a request is in
-/// flight.
+/// flight. The result is capped to two lines so the panel can't balloon.
 struct CommandBarView: View {
     @Bindable var viewModel: CommandBarViewModel
     @FocusState private var isFocused: Bool
@@ -45,6 +45,8 @@ struct CommandBarView: View {
                     Text(result.output)
                         .font(.system(size: 12))
                         .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
