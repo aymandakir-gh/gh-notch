@@ -1,14 +1,15 @@
 import SwiftUI
 
 /// Compact battery indicator: SF Symbol that reflects level + charging state,
-/// the percentage, and a time estimate when macOS provides one.
+/// the percentage, and a time estimate when macOS provides one. Content-sized so
+/// the parent controls layout.
 struct BatteryView: View {
     @Bindable var monitor: BatteryMonitor
 
     var body: some View {
         let snapshot = monitor.snapshot
 
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Image(systemName: symbolName(for: snapshot))
                 .font(.system(size: 15))
                 .foregroundStyle(tint(for: snapshot))
@@ -19,19 +20,11 @@ struct BatteryView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.primary)
                     .monospacedDigit()
-
-                if let time = snapshot.timeDescription {
-                    Text(time)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
             } else {
                 Text("No battery")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
-
-            Spacer(minLength: 0)
         }
     }
 
@@ -56,7 +49,6 @@ struct BatteryView: View {
 
 #Preview {
     BatteryView(monitor: BatteryMonitor())
-        .frame(width: 200)
         .padding()
         .background(Color.black)
 }
