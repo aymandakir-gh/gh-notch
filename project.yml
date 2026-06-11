@@ -1,0 +1,63 @@
+name: gh-notch
+
+options:
+  bundleIdPrefix: company.gh
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: "" # set your Apple Developer Team ID in Xcode → Signing & Capabilities
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  gh-notch:
+    type: application
+    platform: macOS
+    sources:
+      - path: gh-notch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: company.gh.notch
+        INFOPLIST_FILE: gh-notch/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+    info:
+      path: gh-notch/Resources/Info.plist
+      properties:
+        LSUIElement: true
+        CFBundleDisplayName: gh-notch
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: "MIT License. Copyright (c) 2026 GrowthHackers."
+
+  gh-notchTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: gh-notchTests
+    dependencies:
+      - target: gh-notch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: company.gh.notchTests
+
+schemes:
+  gh-notch:
+    build:
+      targets:
+        gh-notch: all
+        gh-notchTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - gh-notchTests

@@ -1,0 +1,34 @@
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - force_unwrapping
+  - first_where
+  - sorted_imports
+  - explicit_init
+  - redundant_nil_coalescing
+
+disabled_rules:
+  - todo
+
+excluded:
+  - .build
+  - DerivedData
+  - gh-notch.xcodeproj
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - x
+    - y
+
+# force_unwrapping is opt-in above and left at error severity: no force-unwraps
+# in non-test code (see DEVELOPMENT.md).
+force_cast: error
+force_try: error
