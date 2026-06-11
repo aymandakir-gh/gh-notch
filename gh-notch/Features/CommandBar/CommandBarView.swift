@@ -2,8 +2,10 @@ import SwiftUI
 
 /// The AI command bar: a Spotlight-style text field rendered in the notch.
 ///
-/// MVP: parses locally (math, counts, transforms, date). The result line shows
-/// underneath; a small badge marks whether it was resolved on-device.
+/// Parses locally first (math, counts, transforms, date); unrecognized queries
+/// dispatch to the configured AI endpoint. The result line shows underneath with
+/// a badge marking on-device vs. remote, and a spinner while a request is in
+/// flight.
 struct CommandBarView: View {
     @Bindable var viewModel: CommandBarViewModel
     @FocusState private var isFocused: Bool
@@ -20,7 +22,12 @@ struct CommandBarView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(.primary)
                     .focused($isFocused)
-                    .onSubmit { viewModel.submit() }
+                    .onSubmit { Task { await viewModel.submit() } }
+
+                if viewModel.isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
@@ -34,7 +41,7 @@ struct CommandBarView: View {
                     Image(systemName: result.handledLocally ? "lock.fill" : "cloud")
                         .font(.system(size: 9))
                         .foregroundStyle(result.handledLocally ? .green : .orange)
-                        .help(result.handledLocally ? "Resolved on-device" : "Would dispatch to your AI endpoint")
+                        .help(result.handledLocally ? "Resolved on-device" : "From your AI endpoint")
                     Text(result.output)
                         .font(.system(size: 12))
                         .foregroundStyle(.primary)
@@ -45,6 +52,7 @@ struct CommandBarView: View {
             }
         }
         .animation(.easeOut(duration: 0.15), value: viewModel.result)
+        .animation(.easeOut(duration: 0.15), value: viewModel.isLoading)
         .onAppear { isFocused = true }
     }
 }

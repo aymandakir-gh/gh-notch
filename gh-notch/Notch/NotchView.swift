@@ -3,7 +3,7 @@ import SwiftUI
 /// SwiftUI root rendered inside the notch panel.
 ///
 /// Collapsed: a black pill that hugs the notch. Expanded (on hover/click): the
-/// MVP widgets — the local AI command bar and the battery HUD.
+/// AI command bar and the battery HUD.
 struct NotchView: View {
     @Bindable var viewModel: NotchViewModel
     @State private var isHovering = false
@@ -22,11 +22,12 @@ struct NotchView: View {
         .background(panelShape)
         .onHover { hovering in
             isHovering = hovering
-            // Hover-to-peek: expand on enter, collapse on leave. A click also
-            // toggles, for trackpad users who prefer an explicit tap.
+            // Hover-to-peek: expand on enter. On leave, only collapse if the
+            // command bar isn't mid-interaction (typing, a result on screen, or a
+            // request in flight) — otherwise the panel would vanish under the user.
             if hovering {
                 viewModel.expand()
-            } else {
+            } else if !commandBar.shouldStayOpen {
                 viewModel.collapse()
             }
         }
