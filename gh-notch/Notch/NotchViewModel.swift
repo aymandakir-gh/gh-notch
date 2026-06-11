@@ -9,8 +9,8 @@ import Observation
 @Observable
 final class NotchViewModel {
 
-    /// Whether the panel is showing its expanded surface (true) or the collapsed
-    /// strip that hugs the notch (false).
+    /// Whether the panel is showing its expanded dropdown (true) or the collapsed
+    /// status bar that flanks the notch (false).
     var isExpanded: Bool = false
 
     /// The latest geometry sampled from the active screen. `nil` before the first
@@ -21,21 +21,20 @@ final class NotchViewModel {
     /// replaces the sampled width. Stubbed now; no UI yet.
     var notchWidthOverride: CGFloat?
 
-    /// Size of the expanded surface. Tight to the command bar + clock/battery row
-    /// so there is no empty black void.
-    let expandedSize = NSSize(width: 360, height: 150)
+    /// Size of the expanded dropdown surface (below the notch).
+    let expandedSize = NSSize(width: 380, height: 172)
 
-    /// Height of the always-visible status strip revealed just below the physical
-    /// notch while collapsed (shows time + battery, and is the click target).
-    let collapsedReveal: CGFloat = 22
+    /// Width of each status section flanking the notch when collapsed (time to the
+    /// left of the camera, battery to the right).
+    let sideWidth: CGFloat = 140
+
+    /// While true, a mouse-exit will not auto-collapse — the command bar is in use.
+    /// The view keeps this in sync with the command bar state.
+    @ObservationIgnored var pinnedOpen = false
 
     /// Invoked after any state change that alters `currentFrame` (expand/collapse).
-    /// The panel sets this to reposition/resize its window. Not part of observable
-    /// state — it is an imperative side-effect hook, kept out of `@ObservationIgnored`
-    /// reads by being a plain stored closure the panel owns.
     @ObservationIgnored var onLayoutChange: (() -> Void)?
 
-    /// Update the stored geometry from a fresh sample.
     func update(geometry: NotchGeometry) {
         self.geometry = geometry
     }
@@ -57,35 +56,42 @@ final class NotchViewModel {
         onLayoutChange?()
     }
 
+    /// Collapse because the pointer left the panel — unless pinned open.
+    func collapseOnMouseExit() {
+        guard !pinnedOpen else { return }
+        collapse()
+    }
+
+    /// Notch width (user override, else sampled).
+    var collapsedNotchWidth: CGFloat {
+        guard let geometry else { return NotchGeometry.fallbackWidth }
+        if let override = notchWidthOverride, override > 0 { return override }
+        return geometry.collapsedFrame.width
+    }
+
+    /// Notch / menu-bar height.
+    var collapsedNotchHeight: CGFloat {
+        geometry?.notchHeight ?? NotchGeometry.fallbackHeight
+    }
+
     /// The frame the panel window should occupy right now, in AppKit screen
     /// coordinates. Returns `nil` until geometry has been sampled at least once.
     var currentFrame: NSRect? {
         guard let geometry else { return nil }
-        let notchHeight = geometry.notchHeight
-        let collapsed = collapsedFrame(from: geometry)
-        guard isExpanded else { return collapsed }
-
-        // Expanded surface drops down from under the notch, centered on it.
-        let width = max(expandedSize.width, collapsed.width)
-        let height = notchHeight + expandedSize.height
-        let originX = collapsed.midX - (width / 2)
-        let originY = collapsed.maxY - height
-        return NSRect(x: originX, y: originY, width: width, height: height)
-    }
-
-    /// Collapsed frame: the notch height plus a small revealed strip below it,
-    /// with the user width override applied if set.
-    private func collapsedFrame(from geometry: NotchGeometry) -> NSRect {
         let notch = geometry.collapsedFrame
-        let width: CGFloat
-        if let override = notchWidthOverride, override > 0 {
-            width = override
-        } else {
-            width = notch.width
+        let notchWidth = collapsedNotchWidth
+
+        if !isExpanded {
+            // Collapsed: a thin bar at menu-bar level spanning the notch plus a
+            // status section on each side.
+            let width = notchWidth + 2 * sideWidth
+            let height = notch.height
+            return NSRect(x: notch.midX - width / 2, y: notch.maxY - height, width: width, height: height)
         }
-        let height = notch.height + collapsedReveal
-        let originX = notch.midX - (width / 2)
-        let originY = notch.maxY - height
-        return NSRect(x: originX, y: originY, width: width, height: height)
+
+        // Expanded: a centered dropdown below the notch.
+        let width = max(expandedSize.width, notchWidth)
+        let height = notch.height + expandedSize.height
+        return NSRect(x: notch.midX - width / 2, y: notch.maxY - height, width: width, height: height)
     }
 }
