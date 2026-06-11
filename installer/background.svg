@@ -1,0 +1,50 @@
+<svg width="660" height="420" viewBox="0 0 660 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14141b"/>
+      <stop offset="0.55" stop-color="#0d0d12"/>
+      <stop offset="1" stop-color="#070709"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.46" r="0.6">
+      <stop offset="0" stop-color="#2b6cff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#2b6cff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="arrow" gradientUnits="userSpaceOnUse" x1="250" y1="210" x2="412" y2="210">
+      <stop offset="0" stop-color="#4f8cff"/>
+      <stop offset="1" stop-color="#36d39a"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <!-- Backdrop -->
+  <rect width="660" height="420" fill="url(#bg)"/>
+  <rect width="660" height="420" fill="url(#glow)"/>
+
+  <!-- Title + subtitle -->
+  <text x="330" y="84" text-anchor="middle"
+        font-family="-apple-system, SF Pro Display, Helvetica, Arial, sans-serif"
+        font-size="30" font-weight="700" fill="#ffffff" letter-spacing="0.2">gh-notch</text>
+  <text x="330" y="112" text-anchor="middle"
+        font-family="-apple-system, SF Pro Text, Helvetica, Arial, sans-serif"
+        font-size="13" font-weight="500" fill="#9aa0ab">Drag gh-notch into Applications to install</text>
+
+  <!-- Soft platforms under each icon slot (icons are drawn by Finder on top) -->
+  <ellipse cx="165" cy="298" rx="78" ry="14" fill="#000000" opacity="0.45" filter="url(#soft)"/>
+  <ellipse cx="495" cy="298" rx="78" ry="14" fill="#000000" opacity="0.45" filter="url(#soft)"/>
+
+  <!-- Move indicator: arrow from the app toward Applications -->
+  <text x="330" y="184" text-anchor="middle"
+        font-family="-apple-system, SF Pro Text, Helvetica, Arial, sans-serif"
+        font-size="11" font-weight="700" fill="#6b7280" letter-spacing="1.5">INSTALL</text>
+  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="252" y1="210" x2="394" y2="210" stroke="url(#arrow)" stroke-width="7"/>
+    <path d="M 390 195 L 414 210 L 390 225" stroke="url(#arrow)" stroke-width="7"/>
+  </g>
+
+  <!-- Footer -->
+  <text x="330" y="402" text-anchor="middle"
+        font-family="-apple-system, SF Pro Text, Helvetica, Arial, sans-serif"
+        font-size="11" font-weight="500" fill="#565b66">macOS 14+   ·   Free &amp; open source   ·   MIT</text>
+</svg>
