@@ -2,12 +2,13 @@ import SwiftUI
 
 /// SwiftUI root rendered inside the notch panel.
 ///
-/// Foundation slice: a collapsed black pill that hugs the notch and expands into
-/// an empty surface on hover/click. Feature widgets (media, calendar, AI bar,
-/// etc.) will mount into the expanded area in later slices.
+/// Collapsed: a black pill that hugs the notch. Expanded (on hover/click): the
+/// MVP widgets — the local AI command bar and the battery HUD.
 struct NotchView: View {
     @Bindable var viewModel: NotchViewModel
     @State private var isHovering = false
+    @State private var commandBar = CommandBarViewModel()
+    @State private var battery = BatteryMonitor()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,20 +51,19 @@ struct NotchView: View {
     // MARK: - Expanded
 
     private var expandedSurface: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 22, weight: .regular))
-                .foregroundStyle(.secondary)
-            Text("gh-notch")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.primary)
-            Text("Foundation ready — features mount here.")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
+        VStack(alignment: .leading, spacing: 12) {
+            CommandBarView(viewModel: commandBar)
+            Divider()
+                .overlay(Color.white.opacity(0.1))
+            BatteryView(monitor: battery)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .onAppear { battery.start() }
+        .onDisappear {
+            battery.stop()
+            commandBar.reset()
+        }
     }
 
     // MARK: - Shape
@@ -99,6 +99,6 @@ struct NotchView: View {
 
 #Preview {
     NotchView(viewModel: NotchViewModel())
-        .frame(width: 360, height: 232)
+        .frame(width: 380, height: 200)
         .background(Color.gray)
 }
