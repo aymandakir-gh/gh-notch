@@ -21,9 +21,9 @@ final class NotchViewModel {
     /// replaces the sampled width. Stubbed now; no UI yet.
     var notchWidthOverride: CGFloat?
 
-    /// Size of the expanded surface. Sized for the MVP widgets (command bar +
-    /// battery row); features will later drive this from their content.
-    let expandedSize = NSSize(width: 380, height: 168)
+    /// Size of the expanded surface. Tight to the command bar + clock/battery row
+    /// so there is no empty black void.
+    let expandedSize = NSSize(width: 360, height: 150)
 
     /// Invoked after any state change that alters `currentFrame` (expand/collapse).
     /// The panel sets this to reposition/resize its window. Not part of observable
