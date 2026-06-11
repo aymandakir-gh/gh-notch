@@ -1,20 +1,14 @@
 name: Release
 
 # Builds, (optionally) signs + notarizes, packages a styled DMG, and attaches it
-# to a GitHub Release when a v* tag is pushed.
+# to a GitHub Release when a v* tag is pushed. The DMG asset is always named
+# `gh-notch.dmg` so the Homebrew cask can point at a stable
+# /releases/latest/download/gh-notch.dmg URL (no per-version cask edits).
 #
 # Signing + notarization run ONLY when the signing secrets are present. Until the
 # GH Apple Developer Program account exists, pushing a tag still produces an
-# *unsigned* DMG artifact (users must right-click → Open). Once the secrets are
-# added (see RELEASING.md), the same workflow produces a signed + notarized DMG.
-#
-# Required repository secrets for signed builds:
-#   MACOS_CERTIFICATE_P12_BASE64  - base64 of the Developer ID Application .p12
-#   MACOS_CERTIFICATE_PASSWORD    - password for that .p12
-#   MACOS_SIGNING_IDENTITY        - e.g. "Developer ID Application: GH S.R.L. (TEAMID)"
-#   APPLE_ID                      - Apple ID email for notarytool
-#   APPLE_TEAM_ID                 - 10-char team id
-#   APPLE_APP_SPECIFIC_PASSWORD   - app-specific password for the Apple ID
+# *unsigned* DMG (users must right-click → Open). Once the secrets are added
+# (see RELEASING.md), the same workflow produces a signed + notarized DMG.
 
 on:
   push:
@@ -114,7 +108,7 @@ jobs:
       - name: Create DMG
         run: |
           set -uo pipefail
-          DMG="build/gh-notch-${GITHUB_REF_NAME}.dmg"
+          DMG="build/gh-notch.dmg"
           BG_ARGS=()
           if [ -f build/dmg/background.tiff ]; then
             BG_ARGS=(--background "build/dmg/background.tiff")
@@ -141,5 +135,5 @@ jobs:
       - name: Attach DMG to release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/gh-notch-${{ github.ref_name }}.dmg
+          files: build/gh-notch.dmg
           generate_release_notes: true
