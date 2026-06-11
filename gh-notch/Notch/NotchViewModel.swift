@@ -10,7 +10,7 @@ import Observation
 final class NotchViewModel {
 
     /// Whether the panel is showing its expanded surface (true) or the collapsed
-    /// pill that hugs the notch (false).
+    /// strip that hugs the notch (false).
     var isExpanded: Bool = false
 
     /// The latest geometry sampled from the active screen. `nil` before the first
@@ -24,6 +24,10 @@ final class NotchViewModel {
     /// Size of the expanded surface. Tight to the command bar + clock/battery row
     /// so there is no empty black void.
     let expandedSize = NSSize(width: 360, height: 150)
+
+    /// Height of the always-visible status strip revealed just below the physical
+    /// notch while collapsed (shows time + battery, and is the click target).
+    let collapsedReveal: CGFloat = 22
 
     /// Invoked after any state change that alters `currentFrame` (expand/collapse).
     /// The panel sets this to reposition/resize its window. Not part of observable
@@ -57,24 +61,31 @@ final class NotchViewModel {
     /// coordinates. Returns `nil` until geometry has been sampled at least once.
     var currentFrame: NSRect? {
         guard let geometry else { return nil }
+        let notchHeight = geometry.notchHeight
         let collapsed = collapsedFrame(from: geometry)
         guard isExpanded else { return collapsed }
 
         // Expanded surface drops down from under the notch, centered on it.
         let width = max(expandedSize.width, collapsed.width)
-        let height = expandedSize.height + collapsed.height
+        let height = notchHeight + expandedSize.height
         let originX = collapsed.midX - (width / 2)
         let originY = collapsed.maxY - height
         return NSRect(x: originX, y: originY, width: width, height: height)
     }
 
-    /// Collapsed frame with the user width override applied, if any.
+    /// Collapsed frame: the notch height plus a small revealed strip below it,
+    /// with the user width override applied if set.
     private func collapsedFrame(from geometry: NotchGeometry) -> NSRect {
-        guard let override = notchWidthOverride, override > 0 else {
-            return geometry.collapsedFrame
+        let notch = geometry.collapsedFrame
+        let width: CGFloat
+        if let override = notchWidthOverride, override > 0 {
+            width = override
+        } else {
+            width = notch.width
         }
-        let base = geometry.collapsedFrame
-        let originX = base.midX - (override / 2)
-        return NSRect(x: originX, y: base.origin.y, width: override, height: base.height)
+        let height = notch.height + collapsedReveal
+        let originX = notch.midX - (width / 2)
+        let originY = notch.maxY - height
+        return NSRect(x: originX, y: originY, width: width, height: height)
     }
 }
