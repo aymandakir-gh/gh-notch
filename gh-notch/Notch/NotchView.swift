@@ -2,12 +2,12 @@ import SwiftUI
 
 /// SwiftUI root rendered inside the notch panel.
 ///
-/// Collapsed: a small always-visible status strip just below the notch (time +
-/// battery) — so the app is discoverable and there's a clear click target.
-/// Expanded: a compact panel with the AI command bar + clock/date + battery +
-/// Settings. Opens on hover or click of the notch header; closes on Esc or a
-/// click outside (handled by the panel). Hover only ever *opens* — there is no
-/// hover-to-close, which was the source of the stuck-open bug.
+/// Collapsed: a thin status bar at menu-bar level — time to the left of the
+/// camera, battery to the right (transparent, so it reads as part of the menu
+/// bar). Hover the notch (or click anywhere) to open.
+/// Expanded: a centered dropdown below the notch — AI command bar + clock/date +
+/// battery + Settings. Closes on Esc, a click outside, or when the pointer leaves
+/// (unless the command bar is in use).
 struct NotchView: View {
     @Bindable var viewModel: NotchViewModel
     @State private var commandBar = CommandBarViewModel()
@@ -15,62 +15,66 @@ struct NotchView: View {
     @State private var clock = ClockModel()
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
+        Group {
             if viewModel.isExpanded {
-                expandedSurface
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                expanded.transition(.opacity)
+            } else {
+                collapsed.transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(panelShape)
         .onAppear {
             battery.start()
             clock.start()
         }
-        .animation(.easeOut(duration: 0.22), value: viewModel.isExpanded)
+        .onChange(of: commandBar.shouldStayOpen) { _, stay in
+            viewModel.pinnedOpen = stay
+        }
+        .animation(.easeOut(duration: 0.2), value: viewModel.isExpanded)
     }
 
-    private var notchHeight: CGFloat {
-        viewModel.geometry?.notchHeight ?? NotchGeometry.fallbackHeight
-    }
+    // MARK: - Collapsed: status flanking the physical notch
 
-    // MARK: - Header (notch blend + collapsed status strip) — the open/close target
-
-    private var header: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: notchHeight) // blends with the camera/notch
-            if !viewModel.isExpanded {
-                collapsedStrip
-                    .transition(.opacity)
+    private var collapsed: some View {
+        HStack(spacing: 0) {
+            // Left of the notch: time
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Text(clock.timeText)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
             }
-        }
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
-        .onTapGesture { viewModel.toggle() }
-        .onHover { hovering in
-            if hovering { viewModel.expand() }
-        }
-    }
+            .frame(width: viewModel.sideWidth)
+            .padding(.trailing, 12)
+            .contentShape(Rectangle())
+            .onTapGesture { viewModel.toggle() }
 
-    private var collapsedStrip: some View {
-        HStack(spacing: 8) {
-            Text(clock.timeText)
-                .font(.system(size: 11, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.92))
-            Spacer(minLength: 6)
-            Image(systemName: collapsedBatterySymbol)
-                .font(.system(size: 11))
-                .foregroundStyle(collapsedBatteryTint)
-                .symbolRenderingMode(.hierarchical)
-            Text("\(battery.snapshot.percent)%")
-                .font(.system(size: 10, weight: .medium))
-                .monospacedDigit()
-                .foregroundStyle(.white.opacity(0.85))
+            // The notch itself — hover (or click) to open
+            Color.clear
+                .frame(width: viewModel.collapsedNotchWidth)
+                .contentShape(Rectangle())
+                .onHover { hovering in if hovering { viewModel.expand() } }
+                .onTapGesture { viewModel.toggle() }
+
+            // Right of the notch: battery
+            HStack(spacing: 5) {
+                Image(systemName: collapsedBatterySymbol)
+                    .font(.system(size: 12))
+                    .foregroundStyle(collapsedBatteryTint)
+                    .symbolRenderingMode(.hierarchical)
+                Text("\(battery.snapshot.percent)%")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                Spacer(minLength: 0)
+            }
+            .frame(width: viewModel.sideWidth)
+            .padding(.leading, 12)
+            .contentShape(Rectangle())
+            .onTapGesture { viewModel.toggle() }
         }
-        .padding(.horizontal, 12)
-        .frame(height: viewModel.collapsedReveal)
+        .frame(height: viewModel.collapsedNotchHeight)
     }
 
     private var collapsedBatterySymbol: String {
@@ -90,13 +94,22 @@ struct NotchView: View {
         let snapshot = battery.snapshot
         if snapshot.isCharging || snapshot.isPluggedIn { return .green }
         if snapshot.hasBattery && snapshot.percent <= 10 { return .red }
-        return .white.opacity(0.85)
+        return .white
     }
 
-    // MARK: - Expanded (command bar + clock/date + battery + settings)
+    // MARK: - Expanded: dropdown below the notch
+
+    private var expanded: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: viewModel.collapsedNotchHeight) // blends with the notch
+            expandedSurface
+                .frame(height: viewModel.expandedSize.height)
+        }
+        .background(panelShape)
+    }
 
     private var expandedSurface: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             CommandBarView(viewModel: commandBar)
 
             Divider().overlay(Color.white.opacity(0.08))
@@ -107,29 +120,26 @@ struct NotchView: View {
                 BatteryView(monitor: battery)
                 SettingsLink {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 13))
+                        .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Settings")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(16)
         .onExitCommand { viewModel.collapse() }
         .onDisappear { commandBar.reset() }
     }
 
-    // MARK: - Shape
+    // MARK: - Shape (rounded dropdown, square top so it hugs the notch)
 
-    /// Notch silhouette: square top corners (flush with the screen edge), rounded
-    /// bottom corners. Expanding only grows downward, so the top stays glued to
-    /// the physical notch.
     private var panelShape: some View {
         UnevenRoundedRectangle(
             topLeadingRadius: 0,
-            bottomLeadingRadius: bottomRadius,
-            bottomTrailingRadius: bottomRadius,
+            bottomLeadingRadius: 20,
+            bottomTrailingRadius: 20,
             topTrailingRadius: 0,
             style: .continuous
         )
@@ -137,22 +147,18 @@ struct NotchView: View {
         .overlay(
             UnevenRoundedRectangle(
                 topLeadingRadius: 0,
-                bottomLeadingRadius: bottomRadius,
-                bottomTrailingRadius: bottomRadius,
+                bottomLeadingRadius: 20,
+                bottomTrailingRadius: 20,
                 topTrailingRadius: 0,
                 style: .continuous
             )
-            .strokeBorder(.white.opacity(viewModel.isExpanded ? 0.10 : 0.06), lineWidth: 1)
+            .strokeBorder(.white.opacity(0.10), lineWidth: 1)
         )
-    }
-
-    private var bottomRadius: CGFloat {
-        viewModel.isExpanded ? 18 : 10
     }
 }
 
 #Preview {
     NotchView(viewModel: NotchViewModel())
-        .frame(width: 360, height: 220)
+        .frame(width: 480, height: 220)
         .background(Color.gray)
 }
