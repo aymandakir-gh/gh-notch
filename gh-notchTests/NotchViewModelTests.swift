@@ -43,19 +43,20 @@ final class NotchViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.currentFrame)
     }
 
-    func testCollapsedFrameAddsVisibleRevealBelowNotch() {
+    func testCollapsedFrameFlanksTheNotch() {
         let viewModel = NotchViewModel()
         let notch = NSRect(x: 800, y: 1060, width: 200, height: 32)
         let geometry = NotchGeometry.stub(collapsedFrame: notch, notchHeight: 32, hasNotch: true)
         viewModel.update(geometry: geometry)
 
-        // Collapsed now reveals a small status strip below the notch: taller by
-        // `collapsedReveal`, dropping down, but still glued to the notch top.
+        // Collapsed spans the notch plus a status section on each side, at the
+        // menu-bar level (same height as the notch), centered on the notch.
+        let expectedWidth = notch.width + 2 * viewModel.sideWidth
         let expected = NSRect(
-            x: notch.origin.x,
-            y: notch.maxY - (notch.height + viewModel.collapsedReveal),
-            width: notch.width,
-            height: notch.height + viewModel.collapsedReveal
+            x: notch.midX - expectedWidth / 2,
+            y: notch.maxY - notch.height,
+            width: expectedWidth,
+            height: notch.height
         )
         XCTAssertEqual(viewModel.currentFrame, expected)
     }
@@ -74,11 +75,11 @@ final class NotchViewModelTests: XCTestCase {
         XCTAssertEqual(frame.maxY, collapsed.maxY, accuracy: 0.001)
         // Centered on the notch.
         XCTAssertEqual(frame.midX, collapsed.midX, accuracy: 0.001)
-        // Taller than collapsed.
+        // Taller than the notch.
         XCTAssertGreaterThan(frame.height, collapsed.height)
     }
 
-    func testNotchWidthOverrideIsApplied() {
+    func testNotchWidthOverrideWidensTheCollapsedBar() {
         let viewModel = NotchViewModel()
         let collapsed = NSRect(x: 800, y: 1060, width: 200, height: 32)
         let geometry = NotchGeometry.stub(collapsedFrame: collapsed, notchHeight: 32, hasNotch: true)
@@ -88,7 +89,7 @@ final class NotchViewModelTests: XCTestCase {
         guard let frame = viewModel.currentFrame else {
             return XCTFail("expected a frame once geometry is set")
         }
-        XCTAssertEqual(frame.width, 300, accuracy: 0.001)
+        XCTAssertEqual(frame.width, 300 + 2 * viewModel.sideWidth, accuracy: 0.001)
         XCTAssertEqual(frame.midX, collapsed.midX, accuracy: 0.001)
     }
 }
