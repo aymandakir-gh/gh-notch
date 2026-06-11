@@ -43,13 +43,21 @@ final class NotchViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.currentFrame)
     }
 
-    func testCollapsedFrameMatchesGeometry() {
+    func testCollapsedFrameAddsVisibleRevealBelowNotch() {
         let viewModel = NotchViewModel()
-        let collapsed = NSRect(x: 800, y: 1060, width: 200, height: 32)
-        let geometry = NotchGeometry.stub(collapsedFrame: collapsed, notchHeight: 32, hasNotch: true)
+        let notch = NSRect(x: 800, y: 1060, width: 200, height: 32)
+        let geometry = NotchGeometry.stub(collapsedFrame: notch, notchHeight: 32, hasNotch: true)
         viewModel.update(geometry: geometry)
 
-        XCTAssertEqual(viewModel.currentFrame, collapsed)
+        // Collapsed now reveals a small status strip below the notch: taller by
+        // `collapsedReveal`, dropping down, but still glued to the notch top.
+        let expected = NSRect(
+            x: notch.origin.x,
+            y: notch.maxY - (notch.height + viewModel.collapsedReveal),
+            width: notch.width,
+            height: notch.height + viewModel.collapsedReveal
+        )
+        XCTAssertEqual(viewModel.currentFrame, expected)
     }
 
     func testExpandedFrameGrowsDownwardAndStaysTopAligned() {
