@@ -26,6 +26,9 @@ DerivedData/
 *.dSYM
 build/
 
+# XcodeGen — the project is generated from project.yml, never committed
+gh-notch.xcodeproj/
+
 # Swift Package Manager
 .build/
 .swiftpm/
