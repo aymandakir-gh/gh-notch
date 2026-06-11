@@ -1,6 +1,30 @@
 import AppKit
 import SwiftUI
 
+/// `NSHostingView` that reports when the pointer leaves its bounds, so the panel
+/// can auto-collapse on mouse-out (hover-to-peek behaviour). Tracking areas are
+/// permission-free, unlike global event monitors.
+final class MouseAwareHostingView<Content: View>: NSHostingView<Content> {
+    var onMouseExited: (() -> Void)?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas {
+            removeTrackingArea(area)
+        }
+        addTrackingArea(NSTrackingArea(
+            rect: .zero,
+            options: [.activeAlways, .mouseEnteredAndExited, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        ))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onMouseExited?()
+    }
+}
+
 /// Borderless `NSPanel` that hosts the SwiftUI notch UI.
 ///
 /// Renders above the menu bar (`.screenSaver` level), joins every Space, is
@@ -30,6 +54,7 @@ final class NotchPanel: NSPanel {
         isMovableByWindowBackground = false
         hidesOnDeactivate = false
         ignoresMouseEvents = false
+        acceptsMouseMovedEvents = true           // needed for mouse-exit tracking
 
         // Visible on every Space, and over full-screen apps' menu bar region.
         collectionBehavior = [
@@ -57,9 +82,13 @@ final class NotchPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    /// Install the SwiftUI root as the panel's content.
+    /// Install the SwiftUI root as the panel's content, wiring mouse-exit to
+    /// auto-collapse.
     func attachContent<Content: View>(_ content: Content) {
-        let hosting = NSHostingView(rootView: content)
+        let hosting = MouseAwareHostingView(rootView: content)
+        hosting.onMouseExited = { [weak self] in
+            self?.viewModel.collapseOnMouseExit()
+        }
         hosting.translatesAutoresizingMaskIntoConstraints = true
         hosting.autoresizingMask = [.width, .height]
         contentView = hosting
@@ -79,7 +108,7 @@ final class NotchPanel: NSPanel {
         guard let frame = viewModel.currentFrame else { return }
         if animated {
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.22
+                context.duration = 0.20
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 animator().setFrame(frame, display: true)
             }
