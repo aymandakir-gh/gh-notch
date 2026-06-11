@@ -1,7 +1,7 @@
 name: Release
 
-# Builds, (optionally) signs + notarizes, packages a DMG, and attaches it to a
-# GitHub Release when a v* tag is pushed.
+# Builds, (optionally) signs + notarizes, packages a styled DMG, and attaches it
+# to a GitHub Release when a v* tag is pushed.
 #
 # Signing + notarization run ONLY when the signing secrets are present. Until the
 # GH Apple Developer Program account exists, pushing a tag still produces an
@@ -44,7 +44,7 @@ jobs:
           xcode-version: "16"
 
       - name: Install tooling
-        run: brew install xcodegen create-dmg
+        run: brew install xcodegen create-dmg librsvg
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -99,14 +99,29 @@ jobs:
             --wait
           xcrun stapler staple "build/export/gh-notch.app"
 
+      - name: Render DMG background (Retina)
+        run: |
+          set -euo pipefail
+          mkdir -p build/dmg
+          rsvg-convert -w 660  -h 420 installer/background.svg -o build/dmg/background.png
+          rsvg-convert -w 1320 -h 840 installer/background.svg -o build/dmg/background@2x.png
+          tiffutil -cathidpicheck build/dmg/background.png build/dmg/background@2x.png \
+            -out build/dmg/background.tiff
+
       - name: Create DMG
         run: |
           set -euo pipefail
           create-dmg \
             --volname "gh-notch" \
-            --window-size 540 380 \
-            --icon-size 100 \
-            --app-drop-link 380 180 \
+            --background "build/dmg/background.tiff" \
+            --window-pos 200 120 \
+            --window-size 660 420 \
+            --icon-size 120 \
+            --text-size 13 \
+            --icon "gh-notch.app" 165 210 \
+            --hide-extension "gh-notch.app" \
+            --app-drop-link 495 210 \
+            --no-internet-enable \
             "build/gh-notch-${GITHUB_REF_NAME}.dmg" \
             "build/export/" || \
           hdiutil create -volname "gh-notch" -srcfolder "build/export/" -ov -format UDZO \
