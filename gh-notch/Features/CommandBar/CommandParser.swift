@@ -1,0 +1,105 @@
+import Foundation
+
+/// Outcome of parsing a command-bar entry.
+struct CommandResult: Equatable {
+    /// Text to show the user.
+    let output: String
+    /// `true` when a local handler resolved the command without leaving the
+    /// device. `false` means the full app would dispatch this to the user's
+    /// configured AI endpoint (not wired up in the MVP).
+    let handledLocally: Bool
+}
+
+/// Privacy-first command parser.
+///
+/// Per the AI Command Bar design spec, every entry is parsed locally first.
+/// Nothing leaves the device. Free-form queries that no local handler matches
+/// fall through to a placeholder result; the remote-dispatch path (Ollama /
+/// Claude / OpenAI) lands in a later slice.
+///
+/// Supported local commands:
+/// - Arithmetic: `2 + 2 * (3 - 1)`
+/// - `count <text>` / `wc <text>` — word and character count
+/// - `upper <text>` / `lower <text>` — case transforms
+/// - `date` / `time` / `now` — current date and time
+/// - `help` — list commands
+struct CommandParser {
+
+    /// Injectable clock so `date`/`time` are testable.
+    var now: () -> Date = Date.init
+
+    /// Parse `raw`. Returns `nil` for empty input (nothing to show).
+    func parse(_ raw: String) -> CommandResult? {
+        let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else { return nil }
+        let lowered = input.lowercased()
+
+        if lowered == "help" {
+            return local(CommandParser.helpText)
+        }
+        if lowered == "date" || lowered == "time" || lowered == "now" {
+            return local(Self.dateFormatter.string(from: now()))
+        }
+        if let rest = remainder(after: "count ", in: input) ?? remainder(after: "wc ", in: input) {
+            let words = rest.split { $0.isWhitespace }.count
+            let characters = rest.count
+            return local("\(words) words · \(characters) characters")
+        }
+        if let rest = remainder(after: "upper ", in: input) {
+            return local(rest.uppercased())
+        }
+        if let rest = remainder(after: "lower ", in: input) {
+            return local(rest.lowercased())
+        }
+        if let value = ArithmeticEvaluator.evaluate(input) {
+            return local(Self.format(value))
+        }
+
+        return CommandResult(
+            output: "No local handler. Add an AI endpoint in Settings to send this to your model.",
+            handledLocally: false
+        )
+    }
+
+    // MARK: - Helpers
+
+    private func local(_ output: String) -> CommandResult {
+        CommandResult(output: output, handledLocally: true)
+    }
+
+    /// Case-insensitive prefix match; returns the trimmed remainder, or `nil`.
+    private func remainder(after prefix: String, in input: String) -> String? {
+        guard input.lowercased().hasPrefix(prefix.lowercased()) else { return nil }
+        let body = String(input.dropFirst(prefix.count))
+        let trimmed = body.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Format a numeric result: drop the decimal for whole numbers, otherwise
+    /// trim to a sensible precision.
+    static func format(_ value: Double) -> String {
+        if value.rounded() == value && abs(value) < 1e15 {
+            return String(Int(value))
+        }
+        return Self.numberFormatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    static let helpText = """
+    Commands: math (2+2), count <text>, wc <text>, upper <text>, lower <text>, date, time, help
+    """
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    private static let numberFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 6
+        formatter.usesGroupingSeparator = false
+        return formatter
+    }()
+}

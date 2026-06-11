@@ -1,0 +1,119 @@
+name: Release
+
+# Builds, (optionally) signs + notarizes, packages a DMG, and attaches it to a
+# GitHub Release when a v* tag is pushed.
+#
+# Signing + notarization run ONLY when the signing secrets are present. Until the
+# GH Apple Developer Program account exists, pushing a tag still produces an
+# *unsigned* DMG artifact (users must right-click → Open). Once the secrets are
+# added (see RELEASING.md), the same workflow produces a signed + notarized DMG.
+#
+# Required repository secrets for signed builds:
+#   MACOS_CERTIFICATE_P12_BASE64  - base64 of the Developer ID Application .p12
+#   MACOS_CERTIFICATE_PASSWORD    - password for that .p12
+#   MACOS_SIGNING_IDENTITY        - e.g. "Developer ID Application: GH S.R.L. (TEAMID)"
+#   APPLE_ID                      - Apple ID email for notarytool
+#   APPLE_TEAM_ID                 - 10-char team id
+#   APPLE_APP_SPECIFIC_PASSWORD   - app-specific password for the Apple ID
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & package
+    runs-on: macos-15
+    env:
+      MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16"
+
+      - name: Install tooling
+        run: brew install xcodegen create-dmg
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Import signing certificate
+        if: env.MACOS_CERTIFICATE_P12_BASE64 != ''
+        run: |
+          set -euo pipefail
+          KEYCHAIN=build.keychain
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$MACOS_CERTIFICATE_P12_BASE64" | base64 --decode > certificate.p12
+          security import certificate.p12 -k "$KEYCHAIN" -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain
+          rm -f certificate.p12
+
+      - name: Build & archive
+        run: |
+          set -euo pipefail
+          SIGN_FLAGS=()
+          if [ -n "${MACOS_SIGNING_IDENTITY:-}" ]; then
+            SIGN_FLAGS=(CODE_SIGN_IDENTITY="$MACOS_SIGNING_IDENTITY" CODE_SIGN_STYLE=Manual)
+          else
+            SIGN_FLAGS=(CODE_SIGNING_ALLOWED=NO)
+          fi
+          xcodebuild archive \
+            -scheme gh-notch \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath build/gh-notch.xcarchive \
+            "${SIGN_FLAGS[@]}"
+
+      - name: Export app
+        run: |
+          set -euo pipefail
+          mkdir -p build/export
+          cp -R "build/gh-notch.xcarchive/Products/Applications/gh-notch.app" build/export/
+
+      - name: Notarize & staple
+        if: env.APPLE_ID != '' && env.MACOS_SIGNING_IDENTITY != ''
+        run: |
+          set -euo pipefail
+          ditto -c -k --keepParent "build/export/gh-notch.app" build/gh-notch.zip
+          xcrun notarytool submit build/gh-notch.zip \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --wait
+          xcrun stapler staple "build/export/gh-notch.app"
+
+      - name: Create DMG
+        run: |
+          set -euo pipefail
+          create-dmg \
+            --volname "gh-notch" \
+            --window-size 540 380 \
+            --icon-size 100 \
+            --app-drop-link 380 180 \
+            "build/gh-notch-${GITHUB_REF_NAME}.dmg" \
+            "build/export/" || \
+          hdiutil create -volname "gh-notch" -srcfolder "build/export/" -ov -format UDZO \
+            "build/gh-notch-${GITHUB_REF_NAME}.dmg"
+
+      - name: Attach DMG to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/gh-notch-${{ github.ref_name }}.dmg
+          generate_release_notes: true
