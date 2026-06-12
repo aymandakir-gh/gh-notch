@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an idea or improvement.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the use case, not just the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: |
+        If it's a new feature or command, the "How to extend gh-notch" section in
+        docs/ARCHITECTURE.md shows where it would slot in — feel free to reference it.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you be willing to contribute this?
+      options:
+        - label: I'd be happy to open a PR for this (with guidance if needed)

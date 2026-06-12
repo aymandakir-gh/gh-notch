@@ -1,0 +1,57 @@
+name: Bug report
+description: Something isn't working as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. The more detail you give, the faster we can fix it.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, and what went wrong?
+      placeholder: When I type "..." into the command bar, the panel ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Launch gh-notch
+        2. Hover the notch
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 14.5 Sonoma"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Mac model
+      description: Notch size varies by machine, so this matters.
+      placeholder: "e.g. MacBook Pro 14\" M3"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: gh-notch version
+      placeholder: "e.g. 0.1-alpha or a commit SHA"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: A screen recording is gold for UI bugs.

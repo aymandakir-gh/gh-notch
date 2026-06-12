@@ -6,6 +6,11 @@ Thanks for your interest in contributing. gh-notch is MIT-licensed and welcomes 
 
 ## Getting started
 
+New to the codebase? Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** first — it's a
+guided code tour (which files to read in order, the one data flow worth knowing, and
+copy-paste recipes for adding a command, an AI backend, or a whole new feature). It
+answers most "where do I change X?" questions before you have to ask.
+
 1. Fork the repo and clone your fork.
 2. Create a branch from `main`.
 3. Make your changes.
@@ -58,7 +63,9 @@ Open an [Issue](https://github.com/aymandakir-gh/gh-notch/issues) with:
 
 ## Code of Conduct
 
-Be respectful. This is a small OSS project — keep discussions focused on the code, be constructive with feedback, and assume good intent.
+This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you're
+expected to uphold it: keep discussions focused on the code, be constructive, and
+assume good intent.
 
 ---
 
