@@ -37,44 +37,49 @@ struct NotchView: View {
 
     private var collapsed: some View {
         HStack(spacing: 0) {
-            // Left of the notch: time
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                Text(clock.timeText)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-            }
-            .frame(width: viewModel.sideWidth)
-            .padding(.trailing, 12)
-            .contentShape(Rectangle())
-            .onTapGesture { viewModel.toggle() }
+            // Left of the notch: time, hugging the camera. Only the text carries a
+            // hit shape — the empty flank stays click-through so menu-bar items
+            // beside the notch keep working.
+            Text(clock.timeText)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .contentShape(Rectangle())
+                .onTapGesture { viewModel.toggle() }
+                .padding(.trailing, collapsedGap)
+                .frame(width: viewModel.sideWidth, alignment: .trailing)
 
-            // The notch itself — hover (or click) to open
+            // The notch itself — hover (or click) to open.
             Color.clear
                 .frame(width: viewModel.collapsedNotchWidth)
                 .contentShape(Rectangle())
                 .onHover { hovering in if hovering { viewModel.expand() } }
                 .onTapGesture { viewModel.toggle() }
 
-            // Right of the notch: battery
-            HStack(spacing: 5) {
-                Image(systemName: collapsedBatterySymbol)
-                    .font(.system(size: 12))
-                    .foregroundStyle(collapsedBatteryTint)
-                    .symbolRenderingMode(.hierarchical)
-                Text("\(battery.snapshot.percent)%")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                Spacer(minLength: 0)
-            }
-            .frame(width: viewModel.sideWidth)
-            .padding(.leading, 12)
-            .contentShape(Rectangle())
-            .onTapGesture { viewModel.toggle() }
+            // Right of the notch: battery, hugging the camera.
+            collapsedBattery
+                .contentShape(Rectangle())
+                .onTapGesture { viewModel.toggle() }
+                .padding(.leading, collapsedGap)
+                .frame(width: viewModel.sideWidth, alignment: .leading)
         }
         .frame(height: viewModel.collapsedNotchHeight)
+    }
+
+    /// Gap between the time/battery and the notch edge.
+    private let collapsedGap: CGFloat = 10
+
+    private var collapsedBattery: some View {
+        HStack(spacing: 5) {
+            Image(systemName: collapsedBatterySymbol)
+                .font(.system(size: 13))
+                .foregroundStyle(collapsedBatteryTint)
+                .symbolRenderingMode(.hierarchical)
+            Text("\(battery.snapshot.percent)%")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+        }
     }
 
     private var collapsedBatterySymbol: String {

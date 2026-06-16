@@ -25,8 +25,10 @@ final class NotchViewModel {
     let expandedSize = NSSize(width: 380, height: 172)
 
     /// Width of each status section flanking the notch when collapsed (time to the
-    /// left of the camera, battery to the right).
-    let sideWidth: CGFloat = 140
+    /// left of the camera, battery to the right). Sized to the content plus a small
+    /// margin — the time/battery always hug the notch edge, so this only bounds the
+    /// (hit-test-transparent) window footprint, not where the content sits.
+    let sideWidth: CGFloat = 96
 
     /// While true, a mouse-exit will not auto-collapse — the command bar is in use.
     /// The view keeps this in sync with the command bar state.
