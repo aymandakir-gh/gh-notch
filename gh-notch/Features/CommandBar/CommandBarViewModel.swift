@@ -45,6 +45,24 @@ final class CommandBarViewModel {
         await dispatchRemote(prompt: input)
     }
 
+    /// Live, on-device preview while the user types. Resolves local commands
+    /// (math, percentages, counts, transforms…) instantly and shows the result;
+    /// never dispatches to the network — that still requires an explicit submit.
+    /// Non-local input clears any stale result until the user submits.
+    func previewLocal() {
+        guard !isLoading else { return }
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            result = nil
+            return
+        }
+        if let local = parser.parse(input), local.handledLocally {
+            result = local
+        } else {
+            result = nil
+        }
+    }
+
     /// Clear input and result (e.g. on collapse or Esc).
     func reset() {
         input = ""

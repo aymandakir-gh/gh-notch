@@ -51,6 +51,22 @@ struct CommandParser {
         if let rest = remainder(after: "lower ", in: input) {
             return local(rest.lowercased())
         }
+        if let rest = remainder(after: "reverse ", in: input) {
+            return local(String(rest.reversed()))
+        }
+        if let rest = remainder(after: "base64 ", in: input) {
+            return local(Data(rest.utf8).base64EncodedString())
+        }
+        if let rest = remainder(after: "unbase64 ", in: input) {
+            guard let data = Data(base64Encoded: rest),
+                  let decoded = String(data: data, encoding: .utf8) else {
+                return local("Invalid base64")
+            }
+            return local(decoded)
+        }
+        if let value = Self.percentage(of: input) {
+            return local(Self.format(value))
+        }
         if let value = ArithmeticEvaluator.evaluate(input) {
             return local(Self.format(value))
         }
@@ -75,6 +91,18 @@ struct CommandParser {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    /// Parse `"<n>% of <m>"` (e.g. `20% of 80`) → n percent of m. Returns `nil`
+    /// when the input is not a percentage expression, so it never swallows plain
+    /// "… of …" phrases meant for the AI endpoint.
+    static func percentage(of input: String) -> Double? {
+        let lowered = input.lowercased()
+        guard let range = lowered.range(of: "% of ") else { return nil }
+        let lhs = lowered[..<range.lowerBound].trimmingCharacters(in: .whitespaces)
+        let rhs = lowered[range.upperBound...].trimmingCharacters(in: .whitespaces)
+        guard let percent = Double(lhs), let base = Double(rhs) else { return nil }
+        return percent / 100 * base
+    }
+
     /// Format a numeric result: drop the decimal for whole numbers, otherwise
     /// trim to a sensible precision.
     static func format(_ value: Double) -> String {
@@ -85,7 +113,8 @@ struct CommandParser {
     }
 
     static let helpText = """
-    Commands: math (2+2), count <text>, wc <text>, upper <text>, lower <text>, date, time, help
+    Commands: math (2+2), 20% of 80, count <text>, wc <text>, upper/lower <text>, \
+    reverse <text>, base64/unbase64 <text>, date, time, help
     """
 
     private static let dateFormatter: DateFormatter = {

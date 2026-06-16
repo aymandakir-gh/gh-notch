@@ -55,6 +55,37 @@ final class CommandBarViewModelTests: XCTestCase {
         viewModel.reset()
         XCTAssertFalse(viewModel.shouldStayOpen)
     }
+
+    func testPreviewShowsLocalResultWithoutDispatch() {
+        let viewModel = CommandBarViewModel(
+            settings: makeSettings(configured: true),
+            dispatcher: FailingDispatcher()
+        )
+        viewModel.input = "2 + 2"
+        viewModel.previewLocal()
+        XCTAssertEqual(viewModel.result?.output, "4")
+        XCTAssertEqual(viewModel.result?.handledLocally, true)
+    }
+
+    func testPreviewNeverGoesRemoteForNonLocalInput() {
+        let viewModel = CommandBarViewModel(
+            settings: makeSettings(configured: true),
+            dispatcher: FailingDispatcher()
+        )
+        viewModel.input = "capital of France"
+        viewModel.previewLocal()
+        XCTAssertNil(viewModel.result)
+    }
+
+    func testPreviewClearsResultWhenEmptied() {
+        let viewModel = CommandBarViewModel(settings: makeSettings(configured: true))
+        viewModel.input = "2 + 2"
+        viewModel.previewLocal()
+        XCTAssertNotNil(viewModel.result)
+        viewModel.input = ""
+        viewModel.previewLocal()
+        XCTAssertNil(viewModel.result)
+    }
 }
 
 private struct StubDispatcher: AIDispatching {
