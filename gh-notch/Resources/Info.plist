@@ -24,6 +24,10 @@
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>gh-notch shows your upcoming events in the notch. Your calendar data stays on your Mac.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>gh-notch shows your upcoming events in the notch. Your calendar data stays on your Mac.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License. Copyright (c) 2026 GrowthHackers.</string>
 	<key>NSPrincipalClass</key>
