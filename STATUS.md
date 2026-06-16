@@ -9,7 +9,11 @@ Living progress log. See PLAN.md for the design.
 - [x] D. Wiring (entitlements, Info.plist usage strings, project.yml) — CI green
 - [x] E. Release prep (README roadmap, version bump to 0.2.0) — in this commit
 - [x] F. Adversarial review (22 agents, 4 dimensions) + fixes — 9 confirmed findings, all addressed
-- [ ] G. Tag v0.2.0 + Release DMG
+- [x] G. Tagged v0.2.0 — Release workflow built + published gh-notch.dmg
+
+## Result
+v0.2.0 shipped: https://github.com/aymandakir-gh/gh-notch/releases/tag/v0.2.0 (gh-notch.dmg).
+Every slice was CI-green (build + 30+ tests + lint) before the tag.
 
 ## Review fixes applied (slice F)
 - med: EventKit fetch now async/off-main (was synchronous on the MainActor) + single `now()` snapshot.
