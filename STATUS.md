@@ -8,8 +8,18 @@ Living progress log. See PLAN.md for the design.
 - [x] C. UI (CalendarChip collapsed, CalendarAgendaView expanded, NotchView wiring) — CI green
 - [x] D. Wiring (entitlements, Info.plist usage strings, project.yml) — CI green
 - [x] E. Release prep (README roadmap, version bump to 0.2.0) — in this commit
-- [ ] F. Adversarial review + fixes
+- [x] F. Adversarial review (22 agents, 4 dimensions) + fixes — 9 confirmed findings, all addressed
 - [ ] G. Tag v0.2.0 + Release DMG
+
+## Review fixes applied (slice F)
+- med: EventKit fetch now async/off-main (was synchronous on the MainActor) + single `now()` snapshot.
+- med: `isRequestingAccess` pins the panel open so it doesn't auto-collapse under the permission dialog.
+- med: expanded panel height 260 → 300 (+ agenda cap 84 → 72) so the status row can't be clipped.
+- low: dropped the `@MainActor` `deinit` (Swift-6 isolation), event `id` made stable + occurrence-unique.
+- nit: wrapped over-long test lines.
+- DEFERRED (low, Swift-6-readiness only): the non-Sendable `CalendarService` existential crosses an actor
+  boundary at `await`. Making the protocol `@MainActor` would fix it but would force the EventKit fetch
+  back onto the main actor (undoing the off-main fix above), so it's left for a future strict-concurrency pass.
 
 ## Could NOT visually verify (no local Xcode) — compiled by CI, behaviour not exercised
 - `EventKitCalendarService`: the live EventKit store/fetch and the real macOS permission

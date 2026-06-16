@@ -33,10 +33,14 @@ final class CalendarFormattingTests: XCTestCase {
     }
 
     func testRelativeCountdownVariants() {
-        XCTAssertEqual(CalendarFormatting.relative(start: offset(30), end: offset(3600), isAllDay: false, now: now), "in <1m")
-        XCTAssertEqual(CalendarFormatting.relative(start: offset(900), end: offset(4500), isAllDay: false, now: now), "in 15m")
-        XCTAssertEqual(CalendarFormatting.relative(start: offset(3600), end: offset(7200), isAllDay: false, now: now), "in 1h")
-        XCTAssertEqual(CalendarFormatting.relative(start: offset(3900), end: offset(7200), isAllDay: false, now: now), "in 1h 5m")
+        func countdown(_ startOffset: TimeInterval) -> String {
+            CalendarFormatting.relative(start: offset(startOffset), end: offset(startOffset + 3600),
+                                        isAllDay: false, now: now)
+        }
+        XCTAssertEqual(countdown(30), "in <1m")
+        XCTAssertEqual(countdown(900), "in 15m")
+        XCTAssertEqual(countdown(3600), "in 1h")
+        XCTAssertEqual(countdown(3900), "in 1h 5m")
     }
 
     func testCompactDropsInPrefix() {

@@ -17,7 +17,9 @@ struct EventKitCalendarService: CalendarService {
         return authorization
     }
 
-    func events(for day: Date) -> [CalendarEvent] {
+    // Nonisolated `async`, so when awaited from the @MainActor model the EventKit
+    // disk query runs off the main thread; only the value-type result crosses back.
+    func events(for day: Date) async -> [CalendarEvent] {
         guard authorization == .granted else { return [] }
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: day)
@@ -47,12 +49,18 @@ extension CalendarPermission {
 
 extension CalendarEvent {
     /// Map an `EKEvent` to the pure value type, defaulting any missing fields so we
-    /// never force-unwrap EventKit's implicitly-unwrapped optionals.
+    /// never force-unwrap EventKit's implicitly-unwrapped optionals. The id folds in
+    /// the start time so it is (a) stable across refreshes even when
+    /// `eventIdentifier` is nil and (b) unique per occurrence of a recurring event
+    /// (which all share one `eventIdentifier`) — keeping SwiftUI's ForEach identity sane.
     init(from event: EKEvent) {
+        let start = event.startDate ?? .distantPast
+        let base = event.eventIdentifier
+            ?? "\(event.title ?? "")|\(event.endDate?.timeIntervalSinceReferenceDate ?? 0)"
         self.init(
-            id: event.eventIdentifier ?? UUID().uuidString,
+            id: "\(base)@\(start.timeIntervalSinceReferenceDate)",
             title: event.title ?? "(No title)",
-            start: event.startDate ?? .distantPast,
+            start: start,
             end: event.endDate ?? .distantFuture,
             isAllDay: event.isAllDay
         )

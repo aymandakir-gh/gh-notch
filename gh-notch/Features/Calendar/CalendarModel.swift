@@ -12,6 +12,9 @@ final class CalendarModel {
 
     private(set) var permission: CalendarPermission
     private(set) var agenda: [CalendarEvent] = []
+    /// True while the system access prompt is up, so the panel can stay open
+    /// instead of auto-collapsing out from under the dialog.
+    private(set) var isRequestingAccess = false
 
     @ObservationIgnored private let service: CalendarService
     @ObservationIgnored private let calendar: Calendar
@@ -29,9 +32,9 @@ final class CalendarModel {
         self.permission = service.authorization
     }
 
-    deinit {
-        timer?.invalidate()
-    }
+    // No deinit: these models are @State-owned for the app's lifetime, so dropping
+    // the timer cleanup avoids a nonisolated deinit touching MainActor state (a
+    // Swift 6 / strict-concurrency error). stop() handles teardown when needed.
 
     /// Earliest timed event today that hasn't ended (drives the collapsed chip).
     var nextEvent: CalendarEvent? {
@@ -40,23 +43,26 @@ final class CalendarModel {
 
     /// Re-read authorization (catches changes made in System Settings) and load
     /// today's agenda when granted. Never prompts — safe on appear and on a timer.
-    func refresh() {
+    /// The EventKit fetch is awaited off the main actor; `now` is sampled once so
+    /// the fetch window and the filter window can't disagree across a midnight tick.
+    func refresh() async {
         permission = service.authorization
         guard permission == .granted else {
             agenda = []
             return
         }
-        agenda = CalendarLogic.agenda(from: service.events(for: now()), now: now(), calendar: calendar)
+        let reference = now()
+        let events = await service.events(for: reference)
+        agenda = CalendarLogic.agenda(from: events, now: reference, calendar: calendar)
     }
 
     /// Initial refresh plus a low-frequency poll so relative times and newly added
     /// events stay current. Does NOT prompt for access.
     func start() {
-        refresh()
+        Task { await refresh() }
         guard timer == nil else { return }
         let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
-            // The timer fires on the main run loop, so MainActor isolation holds.
-            MainActor.assumeIsolated { self?.refresh() }
+            Task { @MainActor [weak self] in await self?.refresh() }
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
@@ -71,8 +77,10 @@ final class CalendarModel {
     /// the feature becomes visible (panel expanded) — lazy permission, not at launch.
     func requestAccess() async {
         if permission == .notDetermined {
+            isRequestingAccess = true
             permission = await service.requestAccess()
+            isRequestingAccess = false
         }
-        refresh()
+        await refresh()
     }
 }

@@ -21,9 +21,10 @@ final class NotchViewModel {
     /// replaces the sampled width. Stubbed now; no UI yet.
     var notchWidthOverride: CGFloat?
 
-    /// Size of the expanded dropdown surface (below the notch). Tall enough for the
-    /// command bar, the Today agenda, and the status row without clipping.
-    let expandedSize = NSSize(width: 380, height: 260)
+    /// Size of the expanded dropdown surface (below the notch). Sized for the worst
+    /// case — command bar with a two-line result + a full Today agenda + the status
+    /// row — so nothing clips; sparser states just leave whitespace.
+    let expandedSize = NSSize(width: 380, height: 300)
 
     /// Width of each status section flanking the notch when collapsed. The left
     /// flank holds the time plus the optional next-event chip, so this is sized for

@@ -51,7 +51,7 @@ struct CalendarAgendaView: View {
                         ForEach(model.agenda) { row($0) }
                     }
                 }
-                .frame(maxHeight: 84)
+                .frame(maxHeight: 72)
             }
         case .notDetermined:
             hint("Checking your calendar…")
@@ -124,8 +124,8 @@ struct CalendarAgendaView: View {
         ]),
         now: { now }
     )
-    model.refresh()
     return CalendarAgendaView(model: model, now: now)
+        .task { await model.refresh() }
         .frame(width: 340)
         .padding()
         .background(Color.black)

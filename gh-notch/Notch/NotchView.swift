@@ -35,10 +35,16 @@ struct NotchView: View {
             clock.start()
             calendar.start() // reads access + polls; never prompts (that waits for expand)
         }
-        .onChange(of: commandBar.shouldStayOpen) { _, stay in
-            viewModel.pinnedOpen = stay
-        }
+        .onChange(of: commandBar.shouldStayOpen) { _, _ in syncPinnedOpen() }
+        .onChange(of: calendar.isRequestingAccess) { _, _ in syncPinnedOpen() }
         .animation(.easeOut(duration: 0.22), value: viewModel.isExpanded)
+    }
+
+    /// Keep the panel open (no mouse-exit auto-collapse) while the command bar is
+    /// in use OR the calendar permission dialog is up — otherwise the panel would
+    /// vanish from under the system prompt.
+    private func syncPinnedOpen() {
+        viewModel.pinnedOpen = commandBar.shouldStayOpen || calendar.isRequestingAccess
     }
 
     // MARK: - Collapsed: status flanking the physical notch

@@ -9,7 +9,8 @@ protocol CalendarService {
     /// Prompt for access (no-op if already decided); returns the resulting state.
     func requestAccess() async -> CalendarPermission
     /// Events overlapping the day that contains `day`. Empty unless granted.
-    func events(for day: Date) -> [CalendarEvent]
+    /// `async` so the live EventKit query runs off the main actor.
+    func events(for day: Date) async -> [CalendarEvent]
 }
 
 /// In-memory `CalendarService` for unit tests and SwiftUI previews. A class so
@@ -43,7 +44,7 @@ final class FakeCalendarService: CalendarService {
         return authorization
     }
 
-    func events(for day: Date) -> [CalendarEvent] {
+    func events(for day: Date) async -> [CalendarEvent] {
         authorization == .granted ? events : []
     }
 }

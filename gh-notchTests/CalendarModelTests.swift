@@ -36,29 +36,37 @@ final class CalendarModelTests: XCTestCase {
         XCTAssertEqual(model.permission, .denied)
     }
 
-    func testRefreshLoadsSortedAgendaWhenGranted() throws {
+    func testRefreshLoadsSortedAgendaWhenGranted() async throws {
         let cal = try romeCalendar()
         let now = try date(cal, 2026, 6, 16, 10, 0)
         let model = CalendarModel(
             service: FakeCalendarService(authorization: .granted, events: try todaysEvents(cal, now: now)),
             calendar: cal, now: { now }
         )
-        model.refresh()
+        await model.refresh()
         XCTAssertEqual(model.agenda.map(\.title), ["Holiday", "Standup", "Design"])
         XCTAssertEqual(model.nextEvent?.title, "Design")
     }
 
-    func testRefreshClearsAgendaWhenDenied() throws {
+    func testRefreshClearsAgendaWhenDenied() async throws {
         let cal = try romeCalendar()
         let now = try date(cal, 2026, 6, 16, 10, 0)
         let model = CalendarModel(
             service: FakeCalendarService(authorization: .denied, events: try todaysEvents(cal, now: now)),
             calendar: cal, now: { now }
         )
-        model.refresh()
+        await model.refresh()
         XCTAssertTrue(model.agenda.isEmpty)
         XCTAssertNil(model.nextEvent)
         XCTAssertEqual(model.permission, .denied)
+    }
+
+    func testRequestAccessClearsTheInFlightFlagWhenDone() async {
+        let fake = FakeCalendarService(authorization: .notDetermined, resolvesTo: .granted)
+        let model = CalendarModel(service: fake)
+        await model.requestAccess()
+        XCTAssertFalse(model.isRequestingAccess)
+        XCTAssertEqual(model.permission, .granted)
     }
 
     func testRequestAccessPromptsOnceWhenNotDetermined() async throws {
