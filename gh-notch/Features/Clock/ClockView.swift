@@ -7,11 +7,11 @@ struct ClockView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(model.timeText)
-                .font(.system(size: 26, weight: .semibold))
+                .font(.system(size: 28, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.primary)
             Text(model.dateText)
-                .font(.system(size: 11))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }

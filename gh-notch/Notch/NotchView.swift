@@ -14,10 +14,16 @@ struct NotchView: View {
     @State private var battery = BatteryMonitor()
     @State private var clock = ClockModel()
 
+    @State private var gearHover = false
+
     var body: some View {
         Group {
             if viewModel.isExpanded {
-                expanded.transition(.opacity)
+                // Grows down out of the notch: scale up from the top edge + fade.
+                expanded.transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .top)),
+                    removal: .opacity
+                ))
             } else {
                 collapsed.transition(.opacity)
             }
@@ -30,7 +36,7 @@ struct NotchView: View {
         .onChange(of: commandBar.shouldStayOpen) { _, stay in
             viewModel.pinnedOpen = stay
         }
-        .animation(.easeOut(duration: 0.2), value: viewModel.isExpanded)
+        .animation(.easeOut(duration: 0.22), value: viewModel.isExpanded)
     }
 
     // MARK: - Collapsed: status flanking the physical notch
@@ -125,10 +131,13 @@ struct NotchView: View {
                 BatteryView(monitor: battery)
                 SettingsLink {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(gearHover ? Color.primary : Color.secondary)
+                        .scaleEffect(gearHover ? 1.1 : 1.0)
                 }
                 .buttonStyle(.plain)
+                .onHover { gearHover = $0 }
+                .animation(.easeOut(duration: 0.12), value: gearHover)
                 .help("Settings")
             }
         }
@@ -141,24 +150,16 @@ struct NotchView: View {
     // MARK: - Shape (rounded dropdown, square top so it hugs the notch)
 
     private var panelShape: some View {
-        UnevenRoundedRectangle(
+        let shape = UnevenRoundedRectangle(
             topLeadingRadius: 0,
-            bottomLeadingRadius: 20,
-            bottomTrailingRadius: 20,
+            bottomLeadingRadius: 22,
+            bottomTrailingRadius: 22,
             topTrailingRadius: 0,
             style: .continuous
         )
-        .fill(.black)
-        .overlay(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 0,
-                bottomLeadingRadius: 20,
-                bottomTrailingRadius: 20,
-                topTrailingRadius: 0,
-                style: .continuous
-            )
-            .strokeBorder(.white.opacity(0.10), lineWidth: 1)
-        )
+        return shape
+            .fill(.black)
+            .overlay(shape.strokeBorder(.white.opacity(0.12), lineWidth: 1))
     }
 }
 

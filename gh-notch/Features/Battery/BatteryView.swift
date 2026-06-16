@@ -17,7 +17,7 @@ struct BatteryView: View {
 
             if snapshot.hasBattery {
                 Text("\(snapshot.percent)%")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(.primary)
                     .monospacedDigit()
             } else {
