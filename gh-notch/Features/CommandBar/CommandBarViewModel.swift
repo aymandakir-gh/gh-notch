@@ -19,6 +19,11 @@ final class CommandBarViewModel {
     /// Test seam: when set, used instead of building a dispatcher from settings.
     @ObservationIgnored private let dispatcherOverride: AIDispatching?
 
+    /// Bumped on every new dispatch and on `reset()`. A dispatch that finishes
+    /// after its generation is superseded discards its result, so a stale remote
+    /// answer can't repopulate a bar the user already cleared or collapsed.
+    @ObservationIgnored private var generation = 0
+
     init(
         parser: CommandParser = CommandParser(),
         settings: SettingsStore = .shared,
@@ -63,8 +68,10 @@ final class CommandBarViewModel {
         }
     }
 
-    /// Clear input and result (e.g. on collapse or Esc).
+    /// Clear input and result (e.g. on collapse or Esc). Also invalidates any
+    /// in-flight remote dispatch so its late answer is discarded.
     func reset() {
+        generation &+= 1
         input = ""
         result = nil
         isLoading = false
@@ -79,16 +86,22 @@ final class CommandBarViewModel {
     // MARK: - Remote
 
     private func dispatchRemote(prompt: String) async {
+        generation &+= 1
+        let dispatch = generation
         isLoading = true
         result = nil
-        defer { isLoading = false }
+        // Only clear the spinner if this dispatch is still the current one; a
+        // superseded dispatch must not touch a newer request's state.
+        defer { if dispatch == generation { isLoading = false } }
 
         let dispatcher = dispatcherOverride
             ?? OpenAICompatibleDispatcher(endpoint: settings.endpoint, apiKey: settings.apiKey)
         do {
             let answer = try await dispatcher.complete(prompt: prompt)
+            guard dispatch == generation else { return }
             result = CommandResult(output: answer, handledLocally: false)
         } catch {
+            guard dispatch == generation else { return }
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             result = CommandResult(output: message, handledLocally: false)
         }
