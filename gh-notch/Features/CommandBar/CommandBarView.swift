@@ -13,6 +13,7 @@ struct CommandBarView: View {
     @Bindable var viewModel: CommandBarViewModel
     @FocusState private var isFocused: Bool
     @State private var copied = false
+    @State private var copyToken = 0
 
     /// Example commands shown when the field is empty.
     private let hints = ["12 * 8", "20% of 80", "upper hello"]
@@ -109,7 +110,11 @@ struct CommandBarView: View {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(output, forType: .string)
         copied = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
+        copyToken &+= 1
+        let token = copyToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            if copyToken == token { copied = false }
+        }
     }
 }
 

@@ -144,7 +144,10 @@ struct NotchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(16)
         .onExitCommand { viewModel.collapse() }
-        .onDisappear { commandBar.reset() }
+        .onDisappear {
+            commandBar.reset()
+            gearHover = false // avoid the gear re-appearing pre-hovered if collapsed via Esc
+        }
     }
 
     // MARK: - Shape (rounded dropdown, square top so it hugs the notch)
