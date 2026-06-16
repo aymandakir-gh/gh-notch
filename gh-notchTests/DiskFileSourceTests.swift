@@ -11,10 +11,14 @@ final class DiskFileSourceTests: XCTestCase {
     }
 
     private func tempFile(_ name: String, bytes: Int) throws -> URL {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(UUID().uuidString)-\(name)")
+        // Put the file in a unique subdirectory so its own name stays clean
+        // (the staged displayName is the source's lastPathComponent).
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("src-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent(name)
         try Data(repeating: 0x41, count: bytes).write(to: url)
-        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
         return url
     }
 

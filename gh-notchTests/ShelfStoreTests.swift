@@ -72,10 +72,13 @@ final class ShelfStoreTests: XCTestCase {
         let base = FileManager.default.temporaryDirectory
             .appendingPathComponent("shelf-store-\(UUID().uuidString)", isDirectory: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: base) }
-        let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(UUID().uuidString)-keep.txt")
+        // Source file in its own subdir so its name stays "keep.txt".
+        let srcDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("src-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: srcDir) }
+        let file = srcDir.appendingPathComponent("keep.txt")
         try Data(repeating: 0x42, count: 16).write(to: file)
-        addTeardownBlock { try? FileManager.default.removeItem(at: file) }
 
         let store1 = ShelfStore(source: DiskFileSource(baseDirectory: base))
         _ = await store1.add(file)
