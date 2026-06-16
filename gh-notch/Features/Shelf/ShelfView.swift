@@ -1,10 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The File Shelf in the expanded panel: a header with clear-all, a horizontal
-/// row of held-file chips (icon + name + size + remove), and a dashed empty state.
-/// Drag-in / drag-out / share are layered on in later slices.
+/// row of held-file chips (icon + name + size + remove), a dashed empty state, and
+/// drag-in. Drag-out / share are layered on in the next slice.
 struct ShelfView: View {
     @Bindable var store: ShelfStore
+    @State private var isDropTargeted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -27,6 +29,22 @@ struct ShelfView: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDrop(providers)
+        }
+    }
+
+    /// Load each dropped provider's file URL and stage it. Returns whether any
+    /// providers were accepted; the actual add is async + off the main actor.
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        let fileProviders = providers.filter { $0.canLoadObject(ofClass: URL.self) }
+        for provider in fileProviders {
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                guard let url else { return }
+                Task { @MainActor in await store.add(url) }
+            }
+        }
+        return !fileProviders.isEmpty
     }
 
     @ViewBuilder private var content: some View {
@@ -39,22 +57,28 @@ struct ShelfView: View {
                 }
             }
             .frame(height: 56)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.accentColor, lineWidth: isDropTargeted ? 2 : 0)
+            )
         }
     }
 
     private var emptyState: some View {
         HStack(spacing: 6) {
             Image(systemName: "tray.and.arrow.down")
-            Text("Drop files here")
+            Text(isDropTargeted ? "Release to add" : "Drop files here")
         }
         .font(.system(size: 12))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(isDropTargeted ? Color.accentColor : Color.secondary)
         .frame(maxWidth: .infinity)
         .frame(height: 56)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                .foregroundStyle(.white.opacity(0.15))
+                .strokeBorder(
+                    isDropTargeted ? Color.accentColor : Color.white.opacity(0.15),
+                    style: StrokeStyle(lineWidth: isDropTargeted ? 2 : 1, dash: [4])
+                )
         )
     }
 
