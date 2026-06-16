@@ -35,15 +35,14 @@ brew install xcodegen swiftlint create-dmg librsvg
 - `gh-notch/Settings/SettingsView.swift` — AI endpoint config (⌘,).
 - `gh-notchTests/` — unit tests (geometry math, parser, dispatcher via stub URLProtocol, etc.).
 
-## Current state (v0.1.4)
+## Current state (v0.1.5)
 Functional: flanking collapsed status, hover/click open, auto-hide, command bar (local + remote), Settings, battery, clock. CI (build+test+lint) and Release (tag `v*` → DMG → Homebrew tap `aymandakir-gh/tap`) pipelines work. DMG is **unsigned** (right-click → Open) until there's a paid Apple Developer account — see `RELEASING.md`.
 
+v0.1.5 polish pass shipped: real app icon (generated in `tools/AppIconGenerator/`); tighter, click-through collapsed placement (`sideWidth = 96`); premium dropdown (drop-from-notch animation, softer corners, gear hover, consistent rounded/monospaced numerals); command bar with live on-device preview, copy button, empty-state hint chips, and new local commands (reverse, base64/unbase64, `<n>% of <m>`). Also fixed: xcodegen Info.plist version clobber, so the DMG reports `MARKETING_VERSION`.
+
 ## Known rough edges — improve, verifying each visually
-1. Flanking status placement (`sideWidth = 140` in `NotchViewModel`) — tune so time/battery sit cleanly beside the camera.
-2. Aesthetics: spacing, fonts, icons, dropdown styling, open/close animation — make it feel premium.
-3. Command bar: make it genuinely useful; better empty/loading/result states; more local commands.
-4. **App icon**: no real `AppIcon` yet (placeholder) — design a clean one in `Assets.xcassets`; it shows in the DMG.
-5. Real features (roadmap): media controls / now-playing, calendar next-event (EventKit, lazy permission), file shelf (drag-drop + AirDrop), system HUD.
+1. The collapsed click-through (only the time/battery are interactive; empty flanks pass clicks to the menu bar) is reasoned-correct but not yet verified on a real notched display — confirm it when a build is runnable.
+2. Real features (roadmap): media controls / now-playing, calendar next-event (EventKit, lazy permission), file shelf (drag-drop + AirDrop), system HUD.
 
 ## Rules
 - Conventional commits; push to `main` (CI runs). Release by pushing a tag (`v0.1.5`, …) → Release workflow builds the DMG.
