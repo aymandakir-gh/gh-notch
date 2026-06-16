@@ -14,6 +14,7 @@ excluded:
   - .build
   - DerivedData
   - gh-notch.xcodeproj
+  - tools # build tooling (e.g. the AppIcon generator), not shipped app code
 
 line_length:
   warning: 120
