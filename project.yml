@@ -37,6 +37,12 @@ targets:
         CFBundleDisplayName: gh-notch
         LSMinimumSystemVersion: "14.0"
         NSHumanReadableCopyright: "MIT License. Copyright (c) 2026 GrowthHackers."
+        # Track the build-setting version so xcodegen regenerates the same plist
+        # every run (idempotent) and release DMGs report the real tag version
+        # instead of xcodegen's literal 1.0 default.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSPrincipalClass: NSApplication
 
   gh-notchTests:
     type: bundle.unit-test
