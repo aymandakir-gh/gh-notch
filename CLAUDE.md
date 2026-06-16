@@ -35,7 +35,15 @@ brew install xcodegen swiftlint create-dmg librsvg
 - `gh-notch/Settings/SettingsView.swift` — AI endpoint config (⌘,).
 - `gh-notchTests/` — unit tests (geometry math, parser, dispatcher via stub URLProtocol, etc.).
 
-## Current state (v0.1.5)
+## Current state (v0.2.0)
+Calendar feature (v0.2.0): `Features/Calendar/` mirrors the Battery pattern — `CalendarService`
+protocol (`EventKitCalendarService` + `FakeCalendarService`), pure `CalendarLogic`/`CalendarFormatting`
+(fully unit-tested: sorting, timezone day-windowing, relative formatting, en_IT 24h), and an
+`@Observable @MainActor CalendarModel` (lazy permission, requested on expand). UI: a collapsed
+next-event chip + an expanded "Today" agenda with empty/denied states. NSCalendars(FullAccess)UsageDescription
++ a calendar entitlement are wired. EventKit access is requested only when the panel is expanded.
+
+### Previous state (v0.1.5)
 Functional: flanking collapsed status, hover/click open, auto-hide, command bar (local + remote), Settings, battery, clock. CI (build+test+lint) and Release (tag `v*` → DMG → Homebrew tap `aymandakir-gh/tap`) pipelines work. DMG is **unsigned** (right-click → Open) until there's a paid Apple Developer account — see `RELEASING.md`.
 
 v0.1.5 polish pass shipped: real app icon (generated in `tools/AppIconGenerator/`); tighter, click-through collapsed placement (`sideWidth = 96`); premium dropdown (drop-from-notch animation, softer corners, gear hover, consistent rounded/monospaced numerals); command bar with live on-device preview, copy button, empty-state hint chips, and new local commands (reverse, base64/unbase64, `<n>% of <m>`). Also fixed: xcodegen Info.plist version clobber, so the DMG reports `MARKETING_VERSION`.

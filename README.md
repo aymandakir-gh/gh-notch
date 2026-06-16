@@ -4,7 +4,7 @@
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange) ![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Status: alpha](https://img.shields.io/badge/status-alpha-orange) ![CI](https://github.com/aymandakir-gh/gh-notch/actions/workflows/ci.yml/badge.svg)
 
-> **Status: early alpha (v0.1).** The notch foundation, AI command bar, and battery HUD are built and tested in CI. Media, calendar, file shelf, and system HUD are on the roadmap below. Follow [Releases](https://github.com/aymandakir-gh/gh-notch/releases) to track progress.
+> **Status: early alpha (v0.2).** The notch foundation, AI command bar, battery HUD, and calendar (next event + today's agenda) are built and tested in CI. Media, file shelf, and system HUD are on the roadmap below. Follow [Releases](https://github.com/aymandakir-gh/gh-notch/releases) to track progress.
 
 ---
 
@@ -21,8 +21,8 @@ Clean battery indicator with charge level, charging state, and time-remaining es
 ### Media Controls + Visualizer — *planned (v0.2)*
 Album art, playback controls, and a live audio visualizer — rendered in the notch without covering any screen real estate.
 
-### Calendar & Reminders — *planned (v0.2)*
-Your next event, always visible. Click to expand a mini-calendar with upcoming reminders.
+### Calendar — *shipped (v0.2)*
+Your next event, always visible in the collapsed bar; expand for today's agenda. Privacy-first (EventKit access is requested lazily, only when you open the panel) and your calendar data never leaves your Mac. Reminders + a mini-calendar are still planned.
 
 ### File Shelf with AirDrop — *planned (v0.3)*
 Drag files into the notch to hold them temporarily. AirDrop from there.
@@ -42,7 +42,7 @@ Replaces the default macOS brightness/volume overlay with a sleek notch-native H
 | AI Command Bar | **Yes** | No | No |
 | Open Source | **MIT** | GPL | Closed |
 | Media Controls | Planned | Yes | Yes |
-| Calendar | Planned | No | Yes |
+| Calendar | **Yes** | No | Yes |
 | File Shelf | Planned | No | Yes |
 | Battery HUD | **Yes** | Yes | Yes |
 | Custom HUD | Planned | No | No |
@@ -104,9 +104,10 @@ Tracked release-by-release. ✅ = shipped, ⬜ = planned.
 - ✅ CI (build + test + lint) and a signed-release pipeline
 
 ### v0.2 — Media & time
+- ✅ Calendar — next event in the collapsed bar + today's agenda when expanded
 - ⬜ Media controls + now-playing
 - ⬜ Album-art audio visualizer
-- ⬜ Calendar & reminders (next event + mini-calendar)
+- ⬜ Reminders + mini-calendar
 
 ### v0.3 — Files & system
 - ⬜ File Shelf with drag-and-drop + AirDrop
