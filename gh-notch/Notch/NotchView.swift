@@ -14,6 +14,7 @@ struct NotchView: View {
     @State private var battery = BatteryMonitor()
     @State private var clock = ClockModel()
     @State private var calendar = CalendarModel()
+    @State private var shelf = ShelfStore()
 
     @State private var gearHover = false
 
@@ -139,6 +140,10 @@ struct NotchView: View {
             Divider().overlay(Color.white.opacity(0.08))
 
             CalendarAgendaView(model: calendar, now: clock.now)
+
+            Divider().overlay(Color.white.opacity(0.08))
+
+            ShelfView(store: shelf)
 
             Divider().overlay(Color.white.opacity(0.08))
 
