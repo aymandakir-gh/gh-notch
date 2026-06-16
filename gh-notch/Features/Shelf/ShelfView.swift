@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -103,6 +104,10 @@ struct ShelfView: View {
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
+            Spacer(minLength: 0)
+            SharePickerButton(urls: [store.stagedURL(for: item)])
+                .frame(width: 16, height: 16)
+                .help("Share / AirDrop")
             Button { store.remove(item) } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 11))
@@ -113,8 +118,47 @@ struct ShelfView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .frame(width: 150)
+        .frame(width: 176)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.06)))
+        // Drag a shelf item back out to Finder or another app (copies the staged file).
+        .onDrag { NSItemProvider(contentsOf: store.stagedURL(for: item)) ?? NSItemProvider() }
+    }
+}
+
+/// A small share button that anchors an `NSSharingServicePicker` (AirDrop, Mail,
+/// Messages, …) to itself — SwiftUI has no native equivalent, and the picker needs
+/// a real `NSView` to present from.
+struct SharePickerButton: NSViewRepresentable {
+    let urls: [URL]
+
+    func makeNSView(context: Context) -> NSButton {
+        let button = NSButton()
+        button.title = ""
+        button.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: "Share")
+        button.imagePosition = .imageOnly
+        button.isBordered = false
+        button.bezelStyle = .regularSquare
+        button.contentTintColor = .secondaryLabelColor
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.present(_:))
+        context.coordinator.urls = urls
+        return button
+    }
+
+    func updateNSView(_ nsView: NSButton, context: Context) {
+        context.coordinator.urls = urls
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator: NSObject {
+        var urls: [URL] = []
+
+        @objc func present(_ sender: NSButton) {
+            guard !urls.isEmpty else { return }
+            let picker = NSSharingServicePicker(items: urls)
+            picker.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+        }
     }
 }
 
