@@ -11,7 +11,11 @@ already shipped — see git history / CLAUDE.md.)
 - [x] E. Drag-OUT (.onDrag NSItemProvider) + NSSharingServicePicker share (AirDrop) — CI green
 - [x] F. Release prep (README roadmap File Shelf ✅, version → 0.3.0) — this commit
 - [x] G. Adversarial review (32 agents, 5 dimensions) + fixes + regression tests — 21 confirmed findings
-- [ ] H. Tag v0.3.0 + Release DMG
+- [x] H. Tagged v0.3.0 — Release workflow built + published gh-notch.dmg
+
+## Result
+v0.3.0 shipped: https://github.com/aymandakir-gh/gh-notch/releases/tag/v0.3.0 (gh-notch.dmg).
+43 shelf tests (logic/metadata/persistence/store); every slice CI-green before its tag.
 
 ## Review fixes applied (slice G)
 - high: ShelfStore.add reentrancy — in-flight-path Set + post-await re-check so concurrent drops of
@@ -25,7 +29,7 @@ already shipped — see git history / CLAUDE.md.)
   drag-out guards a missing staged file; share button gets imageScaling + a bigger hit target.
 - config: force_unwrapping pinned to `error` in .swiftlint.yml (was opt-in/warning).
 - +9 regression tests (concurrent dedupe, symlink dedupe, humanSize rollover, svg/docx category,
-  clear-empty-index, orphan reconcile, pruned-index rewrite). Shelf tests now 44.
+  clear-empty-index, orphan reconcile, pruned-index rewrite). Shelf tests now 43.
 - DEFERRED (documented): non-Sendable FileSource existential (Swift-6 readiness, same as Calendar);
   the fixed 410pt panel height (future scroll/section-collapse restructure); per-drop failure feedback.
 
