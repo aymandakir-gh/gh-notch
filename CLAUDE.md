@@ -35,7 +35,18 @@ brew install xcodegen swiftlint create-dmg librsvg
 - `gh-notch/Settings/SettingsView.swift` — AI endpoint config (⌘,).
 - `gh-notchTests/` — unit tests (geometry math, parser, dispatcher via stub URLProtocol, etc.).
 
-## Current state (v0.2.0)
+## Current state (v0.3.0)
+File Shelf (v0.3.0): `Features/Shelf/` mirrors the Battery/Calendar pattern — `FileSource` protocol
+(`DiskFileSource` stages into per-item UUID subdirs under Application Support + a JSON index;
+`FakeFileSource` for tests/previews), pure `ShelfLogic` (newest-first, dedupe, max-N cap) +
+`FileMetadata` (human size, UTType category → SF symbol), and an `@Observable @MainActor ShelfStore`
+(async off-main staging, persistence across relaunch). UI: a Shelf section in the expanded panel with
+chips (icon + name + size + remove), clear-all, dashed empty state, drag-IN (`.onDrop` [.fileURL]),
+drag-OUT (`.onDrag` NSItemProvider), and share/AirDrop (`NSSharingServicePicker` via NSViewRepresentable).
+35 shelf tests; FS is exercised for real in CI. The expanded panel is now ~410pt tall — a future
+scroll/section-collapse restructure is warranted.
+
+### Previous state (v0.2.0)
 Calendar feature (v0.2.0): `Features/Calendar/` mirrors the Battery pattern — `CalendarService`
 protocol (`EventKitCalendarService` + `FakeCalendarService`), pure `CalendarLogic`/`CalendarFormatting`
 (fully unit-tested: sorting, timezone day-windowing, relative formatting, en_IT 24h), and an

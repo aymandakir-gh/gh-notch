@@ -4,7 +4,7 @@
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange) ![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Status: alpha](https://img.shields.io/badge/status-alpha-orange) ![CI](https://github.com/aymandakir-gh/gh-notch/actions/workflows/ci.yml/badge.svg)
 
-> **Status: early alpha (v0.2).** The notch foundation, AI command bar, battery HUD, and calendar (next event + today's agenda) are built and tested in CI. Media, file shelf, and system HUD are on the roadmap below. Follow [Releases](https://github.com/aymandakir-gh/gh-notch/releases) to track progress.
+> **Status: early alpha (v0.3).** The notch foundation, AI command bar, battery HUD, calendar (next event + today's agenda), and file shelf (drag-in, drag-out, AirDrop) are built and tested in CI. Media and a system HUD are on the roadmap below. Follow [Releases](https://github.com/aymandakir-gh/gh-notch/releases) to track progress.
 
 ---
 
@@ -24,8 +24,8 @@ Album art, playback controls, and a live audio visualizer — rendered in the no
 ### Calendar — *shipped (v0.2)*
 Your next event, always visible in the collapsed bar; expand for today's agenda. Privacy-first (EventKit access is requested lazily, only when you open the panel) and your calendar data never leaves your Mac. Reminders + a mini-calendar are still planned.
 
-### File Shelf with AirDrop — *planned (v0.3)*
-Drag files into the notch to hold them temporarily. AirDrop from there.
+### File Shelf with AirDrop — *shipped (v0.3)*
+Drag files into the expanded panel to hold them; they're staged into a managed folder so they survive relaunch. Drag them back out to Finder or any app, or share/AirDrop straight from a shelf chip. Per-item remove and clear-all, with a max-N cap.
 
 ### Custom HUD — *planned (v0.3)*
 Replaces the default macOS brightness/volume overlay with a sleek notch-native HUD.
@@ -43,7 +43,7 @@ Replaces the default macOS brightness/volume overlay with a sleek notch-native H
 | Open Source | **MIT** | GPL | Closed |
 | Media Controls | Planned | Yes | Yes |
 | Calendar | **Yes** | No | Yes |
-| File Shelf | Planned | No | Yes |
+| File Shelf | **Yes** | No | Yes |
 | Battery HUD | **Yes** | Yes | Yes |
 | Custom HUD | Planned | No | No |
 | Local AI (Ollama) | **Yes** | N/A | N/A |
@@ -110,7 +110,7 @@ Tracked release-by-release. ✅ = shipped, ⬜ = planned.
 - ⬜ Reminders + mini-calendar
 
 ### v0.3 — Files & system
-- ⬜ File Shelf with drag-and-drop + AirDrop
+- ✅ File Shelf — drag-in, drag-out, AirDrop, persistence across relaunch
 - ⬜ System HUD replacement (brightness / volume)
 
 ### v0.4+ — Power user
