@@ -63,19 +63,22 @@ final class CalendarFormattingTests: XCTestCase {
     }
 
     func testTimeIs12HourUnderUSLocale() throws {
+        // Assert the 12-hour behaviour without pinning the AM/PM separator, which
+        // ICU renders with a narrow no-break space (U+202F) on newer OSes.
         let rome = try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))
-        XCTAssertEqual(
-            CalendarFormatting.time(try romeInstant(), locale: Locale(identifier: "en_US"), timeZone: rome),
-            "2:30 PM"
-        )
+        let text = CalendarFormatting.time(try romeInstant(), locale: Locale(identifier: "en_US"), timeZone: rome)
+        XCTAssertTrue(text.contains("2:30"), text)
+        XCTAssertTrue(text.uppercased().contains("PM"), text)
     }
 
     func testTimeRespectsTimeZone() throws {
-        // The same instant rendered in Los Angeles is nine hours earlier.
+        // The same instant rendered in Los Angeles is nine hours earlier than Rome.
+        let rome = try XCTUnwrap(TimeZone(identifier: "Europe/Rome"))
         let la = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
-        XCTAssertEqual(
-            CalendarFormatting.time(try romeInstant(), locale: Locale(identifier: "en_US"), timeZone: la),
-            "5:30 AM"
-        )
+        let instant = try romeInstant()
+        let romeText = CalendarFormatting.time(instant, locale: Locale(identifier: "en_US"), timeZone: rome)
+        let laText = CalendarFormatting.time(instant, locale: Locale(identifier: "en_US"), timeZone: la)
+        XCTAssertTrue(laText.contains("5:30"), laText)
+        XCTAssertNotEqual(romeText, laText)
     }
 }
