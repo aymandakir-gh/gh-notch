@@ -13,6 +13,7 @@ struct NotchView: View {
     @State private var commandBar = CommandBarViewModel()
     @State private var battery = BatteryMonitor()
     @State private var clock = ClockModel()
+    @State private var calendar = CalendarModel()
 
     @State private var gearHover = false
 
@@ -32,6 +33,7 @@ struct NotchView: View {
         .onAppear {
             battery.start()
             clock.start()
+            calendar.start() // reads access + polls; never prompts (that waits for expand)
         }
         .onChange(of: commandBar.shouldStayOpen) { _, stay in
             viewModel.pinnedOpen = stay
@@ -43,17 +45,22 @@ struct NotchView: View {
 
     private var collapsed: some View {
         HStack(spacing: 0) {
-            // Left of the notch: time, hugging the camera. Only the text carries a
-            // hit shape — the empty flank stays click-through so menu-bar items
-            // beside the notch keep working.
-            Text(clock.timeText)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .contentShape(Rectangle())
-                .onTapGesture { viewModel.toggle() }
-                .padding(.trailing, collapsedGap)
-                .frame(width: viewModel.sideWidth, alignment: .trailing)
+            // Left of the notch: the next event (when granted) + time, hugging the
+            // camera. Only this group carries a hit shape — the empty flank stays
+            // click-through so menu-bar items beside the notch keep working.
+            HStack(spacing: 8) {
+                if calendar.permission == .granted, let next = calendar.nextEvent {
+                    CalendarChip(event: next, now: clock.now)
+                }
+                Text(clock.timeText)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { viewModel.toggle() }
+            .padding(.trailing, collapsedGap)
+            .frame(width: viewModel.sideWidth, alignment: .trailing)
 
             // The notch itself — hover (or click) to open.
             Color.clear
@@ -125,6 +132,10 @@ struct NotchView: View {
 
             Divider().overlay(Color.white.opacity(0.08))
 
+            CalendarAgendaView(model: calendar, now: clock.now)
+
+            Divider().overlay(Color.white.opacity(0.08))
+
             HStack(alignment: .center, spacing: 12) {
                 ClockView(model: clock)
                 Spacer(minLength: 8)
@@ -144,6 +155,11 @@ struct NotchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(16)
         .onExitCommand { viewModel.collapse() }
+        .task {
+            // Expanding the panel is the user activating the feature — only now do
+            // we (lazily) request calendar access, never at launch.
+            await calendar.requestAccess()
+        }
         .onDisappear {
             commandBar.reset()
             gearHover = false // avoid the gear re-appearing pre-hovered if collapsed via Esc

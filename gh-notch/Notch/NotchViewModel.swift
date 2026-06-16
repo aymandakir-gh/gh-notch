@@ -21,14 +21,15 @@ final class NotchViewModel {
     /// replaces the sampled width. Stubbed now; no UI yet.
     var notchWidthOverride: CGFloat?
 
-    /// Size of the expanded dropdown surface (below the notch).
-    let expandedSize = NSSize(width: 380, height: 172)
+    /// Size of the expanded dropdown surface (below the notch). Tall enough for the
+    /// command bar, the Today agenda, and the status row without clipping.
+    let expandedSize = NSSize(width: 380, height: 260)
 
-    /// Width of each status section flanking the notch when collapsed (time to the
-    /// left of the camera, battery to the right). Sized to the content plus a small
-    /// margin — the time/battery always hug the notch edge, so this only bounds the
-    /// (hit-test-transparent) window footprint, not where the content sits.
-    let sideWidth: CGFloat = 96
+    /// Width of each status section flanking the notch when collapsed. The left
+    /// flank holds the time plus the optional next-event chip, so this is sized for
+    /// both; the content hugs the notch edge and the empty remainder is
+    /// hit-test-transparent (click-through), so the wider footprint is harmless.
+    let sideWidth: CGFloat = 124
 
     /// While true, a mouse-exit will not auto-collapse — the command bar is in use.
     /// The view keeps this in sync with the command bar state.
