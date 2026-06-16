@@ -58,9 +58,11 @@ struct CommandParser {
             return local(Data(rest.utf8).base64EncodedString())
         }
         if let rest = remainder(after: "unbase64 ", in: input) {
-            guard let data = Data(base64Encoded: rest),
-                  let decoded = String(data: data, encoding: .utf8) else {
+            guard let data = Data(base64Encoded: rest) else {
                 return local("Invalid base64")
+            }
+            guard let decoded = String(data: data, encoding: .utf8) else {
+                return local("Decoded bytes are not valid UTF-8")
             }
             return local(decoded)
         }
@@ -99,8 +101,32 @@ struct CommandParser {
         guard let range = lowered.range(of: "% of ") else { return nil }
         let lhs = lowered[..<range.lowerBound].trimmingCharacters(in: .whitespaces)
         let rhs = lowered[range.upperBound...].trimmingCharacters(in: .whitespaces)
-        guard let percent = Double(lhs), let base = Double(rhs) else { return nil }
-        return percent / 100 * base
+        guard let percent = plainDecimal(lhs), let base = plainDecimal(rhs) else { return nil }
+        let value = percent / 100 * base
+        return value.isFinite ? value : nil
+    }
+
+    /// Parse a plain decimal number: optional leading minus, ASCII digits, and at
+    /// most one fractional point. Unlike `Double(_:)` this rejects scientific and
+    /// hex-float literals plus `inf`/`nan`, so those fall through to the AI
+    /// endpoint instead of being computed as a surprising "local" result.
+    private static func plainDecimal(_ string: String) -> Double? {
+        guard !string.isEmpty else { return nil }
+        var sawDigit = false
+        var sawDot = false
+        for (offset, char) in string.enumerated() {
+            if char == "-" {
+                if offset != 0 { return nil }
+            } else if char == "." {
+                if sawDot { return nil }
+                sawDot = true
+            } else if char.isASCII, char.isNumber {
+                sawDigit = true
+            } else {
+                return nil
+            }
+        }
+        return sawDigit ? Double(string) : nil
     }
 
     /// Format a numeric result: drop the decimal for whole numbers, otherwise
@@ -129,6 +155,10 @@ struct CommandParser {
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 6
         formatter.usesGroupingSeparator = false
+        // Stable '.' decimal separator regardless of system locale, so a result
+        // can be copied straight back into the bar and still parse as a number
+        // (the parser reads numbers locale-independently via Double(_:)).
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
     }()
 }

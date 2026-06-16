@@ -68,6 +68,13 @@ final class CommandParserTests: XCTestCase {
         XCTAssertEqual(result?.handledLocally, true)
     }
 
+    func testUnbase64ValidButNonUTF8() {
+        // "/w==" is valid base64 (one 0xFF byte) but not valid UTF-8.
+        let result = parser.parse("unbase64 /w==")
+        XCTAssertEqual(result?.output, "Decoded bytes are not valid UTF-8")
+        XCTAssertEqual(result?.handledLocally, true)
+    }
+
     func testPercentage() {
         XCTAssertEqual(parser.parse("20% of 80")?.output, "16")
         XCTAssertEqual(parser.parse("12.5% of 200")?.output, "25")
@@ -77,5 +84,21 @@ final class CommandParserTests: XCTestCase {
     func testPercentageDoesNotSwallowNaturalLanguage() {
         // "… of …" without a percentage must still fall through to remote.
         XCTAssertEqual(parser.parse("capital of France")?.handledLocally, false)
+    }
+
+    func testPercentageRejectsNonDecimalOperands() {
+        // Scientific/hex-float literals and inf/nan must NOT compute locally —
+        // they fall through to the AI endpoint instead of surprising results.
+        XCTAssertEqual(parser.parse("1e3% of 2")?.handledLocally, false)
+        XCTAssertEqual(parser.parse("0x1p4% of 2")?.handledLocally, false)
+        XCTAssertEqual(parser.parse("inf% of 80")?.handledLocally, false)
+        XCTAssertEqual(parser.parse("nan% of 10")?.handledLocally, false)
+    }
+
+    func testFractionalResultUsesPeriodSeparator() {
+        // Output must use '.' regardless of system locale so it round-trips back
+        // into the parser (which reads numbers locale-independently).
+        XCTAssertEqual(CommandParser.format(0.32), "0.32")
+        XCTAssertEqual(parser.parse("7% of 80")?.output, "5.6")
     }
 }
