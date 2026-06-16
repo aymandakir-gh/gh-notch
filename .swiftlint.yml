@@ -29,7 +29,8 @@ identifier_name:
     - x
     - y
 
-# force_unwrapping is opt-in above and left at error severity: no force-unwraps
-# in non-test code (see DEVELOPMENT.md).
+# Opt-in rules default to warning, so force_unwrapping is pinned to error here
+# (alongside force_cast/force_try): no force-unwraps anywhere (see DEVELOPMENT.md).
+force_unwrapping: error
 force_cast: error
 force_try: error

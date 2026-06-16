@@ -38,14 +38,17 @@ struct NotchView: View {
         }
         .onChange(of: commandBar.shouldStayOpen) { _, _ in syncPinnedOpen() }
         .onChange(of: calendar.isRequestingAccess) { _, _ in syncPinnedOpen() }
+        .onChange(of: shelf.isDraggingOut) { _, _ in syncPinnedOpen() }
         .animation(.easeOut(duration: 0.22), value: viewModel.isExpanded)
     }
 
-    /// Keep the panel open (no mouse-exit auto-collapse) while the command bar is
-    /// in use OR the calendar permission dialog is up — otherwise the panel would
-    /// vanish from under the system prompt.
+    /// Keep the panel open (no mouse-exit auto-collapse) while the command bar is in
+    /// use, the calendar permission dialog is up, or a shelf item is being dragged
+    /// out — otherwise the panel would vanish from under the system prompt / drag.
     private func syncPinnedOpen() {
-        viewModel.pinnedOpen = commandBar.shouldStayOpen || calendar.isRequestingAccess
+        viewModel.pinnedOpen = commandBar.shouldStayOpen
+            || calendar.isRequestingAccess
+            || shelf.isDraggingOut
     }
 
     // MARK: - Collapsed: status flanking the physical notch

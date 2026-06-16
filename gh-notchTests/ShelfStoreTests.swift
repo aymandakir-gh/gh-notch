@@ -89,4 +89,62 @@ final class ShelfStoreTests: XCTestCase {
         XCTAssertEqual(store2.items.count, 1)
         XCTAssertEqual(store2.items.first?.displayName, "keep.txt")
     }
+
+    // MARK: - Regression: review findings
+
+    func testConcurrentSamePathAddsStageOnce() async {
+        // Two simultaneous drops of the same file must not race past the dedupe
+        // check (which straddles the stage await) and stage/insert twice.
+        let fake = FakeFileSource()
+        let store = ShelfStore(source: fake)
+        async let first = store.add(fileURL("dup.txt"))
+        async let second = store.add(fileURL("dup.txt"))
+        _ = await (first, second)
+        XCTAssertEqual(store.items.count, 1)
+        XCTAssertEqual(fake.stageCallCount, 1)
+    }
+
+    func testDedupeResolvesSymlinks() async throws {
+        // A file added via its real path and via a symlink to it dedupes to one entry.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("shelf-symlink-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        let real = dir.appendingPathComponent("real.txt")
+        try Data(repeating: 0x41, count: 8).write(to: real)
+        let link = dir.appendingPathComponent("link.txt")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+
+        let fake = FakeFileSource()
+        let store = ShelfStore(source: fake)
+        _ = await store.add(real)
+        _ = await store.add(link)
+        XCTAssertEqual(store.items.count, 1)
+        XCTAssertEqual(fake.stageCallCount, 1)
+    }
+
+    func testClearWritesEmptyIndexAuthoritatively() async throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("shelf-clear-\(UUID().uuidString)", isDirectory: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: base) }
+        let srcDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("src-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: srcDir) }
+        let file = srcDir.appendingPathComponent("a.txt")
+        try Data(repeating: 0x41, count: 8).write(to: file)
+
+        let store = ShelfStore(source: DiskFileSource(baseDirectory: base))
+        _ = await store.add(file)
+        store.clear()
+
+        // An empty index.json must exist so a cleared shelf can't resurrect.
+        let indexURL = base.appendingPathComponent("index.json")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: indexURL.path))
+        let decoded = try JSONDecoder().decode([ShelfItem].self, from: Data(contentsOf: indexURL))
+        XCTAssertTrue(decoded.isEmpty)
+
+        let relaunched = ShelfStore(source: DiskFileSource(baseDirectory: base))
+        XCTAssertTrue(relaunched.isEmpty)
+    }
 }

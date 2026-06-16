@@ -101,4 +101,36 @@ final class DiskFileSourceTests: XCTestCase {
         let expected = base.appendingPathComponent("ID1").appendingPathComponent("f.txt")
         XCTAssertEqual(source.stagedURL(for: item), expected)
     }
+
+    func testLoadDeletesOrphanDirectories() async throws {
+        let base = tempBase()
+        let source = DiskFileSource(baseDirectory: base)
+        let item = try await source.stage(try tempFile("a.txt", bytes: 10))
+        try source.persist([item])
+        // An orphaned staged dir (e.g. from a failed persist) not in the index.
+        let orphan = base.appendingPathComponent("orphan-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: orphan, withIntermediateDirectories: true)
+
+        _ = source.load()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: orphan.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: source.stagedURL(for: item).path))
+    }
+
+    func testLoadRewritesPrunedIndex() async throws {
+        let base = tempBase()
+        let source = DiskFileSource(baseDirectory: base)
+        let keep = try await source.stage(try tempFile("keep.txt", bytes: 5))
+        let drop = try await source.stage(try tempFile("drop.txt", bytes: 5))
+        try source.persist([keep, drop])
+        try source.remove(drop) // staged copy gone; index still lists it
+
+        XCTAssertEqual(source.load().map(\.id), [keep.id]) // prunes + rewrites the index
+
+        // Recreate drop's staged file; a rewritten index must NOT resurrect it.
+        let dropDir = base.appendingPathComponent(drop.id, isDirectory: true)
+        try FileManager.default.createDirectory(at: dropDir, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: dropDir.appendingPathComponent(drop.stagedName).path, contents: Data())
+        XCTAssertEqual(source.load().map(\.id), [keep.id])
+    }
 }

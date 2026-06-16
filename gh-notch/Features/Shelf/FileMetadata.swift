@@ -42,12 +42,13 @@ enum FileMetadata {
         if bytes < 1000 { return "\(bytes) B" }
         let units = ["KB", "MB", "GB", "TB", "PB"]
         var value = Double(bytes)
-        var unit = units[0]
-        for candidate in units {
+        var unitIndex = -1
+        // Advance the unit while the value *rounded to one decimal* still reaches
+        // 1000, so 999_999 B renders "1 MB" rather than "1000 KB".
+        repeat {
             value /= 1000
-            unit = candidate
-            if value < 1000 { break }
-        }
+            unitIndex += 1
+        } while ((value * 10).rounded() / 10) >= 1000 && unitIndex < units.count - 1
         let rounded = (value * 10).rounded() / 10
         let number: String
         if rounded.rounded() == rounded {
@@ -55,7 +56,7 @@ enum FileMetadata {
         } else {
             number = Self.decimalFormatter.string(from: NSNumber(value: rounded)) ?? String(rounded)
         }
-        return "\(number) \(unit)"
+        return "\(number) \(units[unitIndex])"
     }
 
     /// Category for a directory or a file extension.

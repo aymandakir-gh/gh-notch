@@ -8,6 +8,8 @@ enum ShelfLogic {
     /// Insert `item` at the front (newest first), drop any existing entry with the
     /// same id, and enforce `maxItems`. Returns the new list and any evicted items
     /// (so the caller can delete their staged copies). `maxItems <= 0` means no cap.
+    /// (The store dedupes by `originalPath` before calling this; the id-dedupe here
+    /// is defensive — pure list logic shouldn't assume the caller pre-deduped.)
     static func inserting(
         _ item: ShelfItem,
         into items: [ShelfItem],

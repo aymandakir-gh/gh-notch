@@ -99,14 +99,14 @@ struct ShelfView: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text(FileMetadata.humanSize(item.byteSize))
+                Text(item.isDirectory ? category.label : FileMetadata.humanSize(item.byteSize))
                     .font(.system(size: 9))
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
             Spacer(minLength: 0)
             SharePickerButton(urls: [store.stagedURL(for: item)])
-                .frame(width: 16, height: 16)
+                .frame(width: 18, height: 18)
                 .help("Share / AirDrop")
             Button { store.remove(item) } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -118,10 +118,19 @@ struct ShelfView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .frame(width: 176)
+        .frame(width: 178)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.06)))
         // Drag a shelf item back out to Finder or another app (copies the staged file).
-        .onDrag { NSItemProvider(contentsOf: store.stagedURL(for: item)) ?? NSItemProvider() }
+        // Pin the panel open for the drag; skip if the staged copy has vanished.
+        .onDrag {
+            store.beginDragOut()
+            let url = store.stagedURL(for: item)
+            guard FileManager.default.fileExists(atPath: url.path),
+                  let provider = NSItemProvider(contentsOf: url) else {
+                return NSItemProvider()
+            }
+            return provider
+        }
     }
 }
 
@@ -136,6 +145,7 @@ struct SharePickerButton: NSViewRepresentable {
         button.title = ""
         button.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: "Share")
         button.imagePosition = .imageOnly
+        button.imageScaling = .scaleProportionallyDown
         button.isBordered = false
         button.bezelStyle = .regularSquare
         button.contentTintColor = .secondaryLabelColor

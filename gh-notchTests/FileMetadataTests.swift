@@ -25,6 +25,13 @@ final class FileMetadataTests: XCTestCase {
         XCTAssertEqual(FileMetadata.humanSize(1_234_567_890), "1.2 GB")
     }
 
+    func testHumanSizeRollsOverAtUnitBoundary() {
+        // Just under a 1000-multiple must promote to the next unit, not show "1000 KB".
+        XCTAssertEqual(FileMetadata.humanSize(999_999), "1 MB")
+        XCTAssertEqual(FileMetadata.humanSize(999_999_999), "1 GB")
+        XCTAssertEqual(FileMetadata.humanSize(999_999_999_999), "1 TB")
+    }
+
     // MARK: - Category (fixture extensions)
 
     func testImageCategory() {
@@ -51,6 +58,13 @@ final class FileMetadataTests: XCTestCase {
     func testUnknownAndEmptyCategory() {
         XCTAssertEqual(FileMetadata.category(forExtension: "xyz123"), .other)
         XCTAssertEqual(FileMetadata.category(forExtension: ""), .other)
+    }
+
+    func testConformanceOrderingForMultiTypeExtensions() {
+        // svg conforms to BOTH image and text — image is checked first, so it wins.
+        // Pin this so a future reorder of the conforms() checks can't silently regress it.
+        XCTAssertEqual(FileMetadata.category(forExtension: "svg"), .image)
+        XCTAssertEqual(FileMetadata.category(forExtension: "docx"), .other)
     }
 
     func testDirectoryWinsOverExtension() {

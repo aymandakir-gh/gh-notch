@@ -68,14 +68,45 @@ struct DiskFileSource: FileSource {
     }
 
     func load() -> [ShelfItem] {
+        let stored = readIndex()
+        // Drop entries whose staged copy has vanished (e.g. deleted out from under us).
+        let kept = stored.filter { fileManager.fileExists(atPath: stagedURL(for: $0).path) }
+        let removedOrphans = deleteOrphanDirectories(keeping: kept)
+        // Converge the on-disk index: rewrite it if we pruned entries or removed
+        // orphaned staged directories (left by a failed persist / eviction).
+        if kept.count != stored.count || removedOrphans {
+            try? persist(kept)
+        }
+        return kept
+    }
+
+    private func readIndex() -> [ShelfItem] {
         guard
             let data = try? Data(contentsOf: indexURL),
             let items = try? JSONDecoder().decode([ShelfItem].self, from: data)
         else {
             return []
         }
-        // Drop entries whose staged copy has vanished (e.g. deleted out from under us).
-        return items.filter { fileManager.fileExists(atPath: stagedURL(for: $0).path) }
+        return items
+    }
+
+    /// Delete staged subdirectories with no matching index entry. Returns whether
+    /// anything was removed. (index.json is a file, so it is skipped.)
+    private func deleteOrphanDirectories(keeping items: [ShelfItem]) -> Bool {
+        let keptIDs = Set(items.map(\.id))
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: baseDirectory, includingPropertiesForKeys: [.isDirectoryKey]
+        ) else {
+            return false
+        }
+        var removed = false
+        for entry in entries {
+            let isDirectory = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            guard isDirectory, !keptIDs.contains(entry.lastPathComponent) else { continue }
+            try? fileManager.removeItem(at: entry)
+            removed = true
+        }
+        return removed
     }
 
     private func ensureBaseDirectory() throws {
