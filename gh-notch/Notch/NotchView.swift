@@ -18,6 +18,7 @@ struct NotchView: View {
 
     @State private var gearHover = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let settings = AppSettingsStore.shared
 
     var body: some View {
         Group {
@@ -192,33 +193,13 @@ struct NotchView: View {
     }
 
     private var expandedSurface: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            CommandBarView(viewModel: commandBar)
-
-            Divider().overlay(Color.white.opacity(0.08))
-
-            CalendarAgendaView(model: calendar, now: clock.now)
-
-            Divider().overlay(Color.white.opacity(0.08))
-
-            ShelfView(store: shelf)
-
-            Divider().overlay(Color.white.opacity(0.08))
-
-            HStack(alignment: .center, spacing: 12) {
-                ClockView(model: clock)
-                Spacer(minLength: 8)
-                BatteryView(monitor: battery)
-                SettingsLink {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(gearHover ? Color.primary : Color.secondary)
-                        .scaleEffect(gearHover ? 1.1 : 1.0)
+        let sections = settings.visibleSections
+        return VStack(alignment: .leading, spacing: 12) {
+            ForEach(sections) { section in
+                sectionBody(section)
+                if section != sections.last {
+                    Divider().overlay(Color.white.opacity(0.08))
                 }
-                .buttonStyle(.plain)
-                .onHover { gearHover = $0 }
-                .animation(NotchMotion.micro, value: gearHover)
-                .help("Settings")
             }
         }
         .padding(16)
@@ -231,6 +212,38 @@ struct NotchView: View {
         .onDisappear {
             commandBar.reset()
             gearHover = false // avoid the gear re-appearing pre-hovered if collapsed via Esc
+        }
+    }
+
+    @ViewBuilder
+    private func sectionBody(_ section: ExpandedSection) -> some View {
+        switch section {
+        case .commandBar:
+            CommandBarView(viewModel: commandBar)
+        case .calendar:
+            CalendarAgendaView(model: calendar, now: clock.now)
+        case .shelf:
+            ShelfView(store: shelf)
+        case .statusRow:
+            statusRow
+        }
+    }
+
+    private var statusRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ClockView(model: clock)
+            Spacer(minLength: 8)
+            BatteryView(monitor: battery)
+            SettingsLink {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(gearHover ? Color.primary : Color.secondary)
+                    .scaleEffect(gearHover ? 1.1 : 1.0)
+            }
+            .buttonStyle(.plain)
+            .onHover { gearHover = $0 }
+            .animation(NotchMotion.micro, value: gearHover)
+            .help("Settings")
         }
     }
 }
