@@ -9,10 +9,10 @@
 ## Your mission
 Take it from "works but rough" to a **polished, genuinely useful, beautiful** notch app — NotchNook / Boring Notch quality.
 
-**You can build and run this locally. Use that on every change.** The previous iterations were done blind through CI and converged slowly. Now: make a change → `xcodegen generate` → build → **run the app and look at the notch** → verify (screenshot / ask the user) → adjust. Do NOT stack multiple unverified visual changes; tighten the loop to one change at a time when it's visual.
+**Verification reality (checked 2026-07-13): this machine has CommandLineTools ONLY — no Xcode.app.** The loop is: change → `tools/typecheck.sh` (full `swiftc -typecheck` of the app module against the CLT SDK) → `xcodegen generate` sanity → commit → push → **CI green** (build+tests+lint on GitHub runners). Unit-test everything testable; visual behaviors go into STATUS.md's "needs visual verification" ledger. IF full Xcode gets installed later, switch to: build → **run the app and look at the notch** → verify (screenshot) → adjust, one visual change at a time — and burn down the ledger.
 
 ## Build / run / test
-Requires **full Xcode 16** (not just Command Line Tools) and:
+Local full builds require **full Xcode 16** (NOT currently installed — see above) and:
 ```bash
 brew install xcodegen swiftlint create-dmg librsvg
 ```
