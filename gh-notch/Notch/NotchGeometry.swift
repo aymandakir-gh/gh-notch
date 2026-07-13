@@ -57,6 +57,12 @@ struct NotchGeometry: Equatable {
         return NSScreen.main ?? screens.first
     }
 
+    /// Sample geometry for a specific screen (multi-display callers own screen
+    /// selection; `forActiveScreen()` remains the single-screen convenience).
+    static func sample(_ screen: NSScreen) -> NotchGeometry {
+        NotchGeometry(screen: screen)
+    }
+
     private init(screen: NSScreen) {
         let topInset = screen.safeAreaInsets.top
         let frame = screen.frame

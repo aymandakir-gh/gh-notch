@@ -1,77 +1,65 @@
 import AppKit
 import Observation
 
-/// Observable state for the notch panel.
+/// Observable state for the notch panel, driven by `NotchStateMachine`.
 ///
-/// Owns the collapse/expand state and the most recently sampled geometry. The
-/// panel reads `currentFrame` to size/position its window; the SwiftUI view reads
-/// `isExpanded` to choose its layout.
+/// All UI inputs and feature posts funnel through `handle(_:)`; this class owns
+/// the auto-dismiss clock the (pure) machine schedules, the sampled geometry,
+/// and the pin set. The panel window reads `layout` for its one pre-sized
+/// envelope; the SwiftUI layer reads `state` + `islandSize(for:)` and animates
+/// between island sizes — the window itself never resizes on state changes.
+@MainActor
 @Observable
 final class NotchViewModel {
 
-    /// Whether the panel is showing its expanded dropdown (true) or the collapsed
-    /// status bar that flanks the notch (false).
-    var isExpanded: Bool = false
+    /// Current presentation state. Mutate only via `handle(_:)`.
+    private(set) var state: NotchState = .collapsed
 
-    /// The latest geometry sampled from the active screen. `nil` before the first
-    /// sample (e.g. headless boot); the panel skips positioning until it is set.
+    /// The latest geometry sampled from the panel's screen. `nil` before the
+    /// first sample (e.g. headless boot); the panel skips positioning until set.
     private(set) var geometry: NotchGeometry?
 
-    /// User override for notch width (Settings, future slice). When non-nil it
-    /// replaces the sampled width. Stubbed now; no UI yet.
+    /// Frame of the screen hosting this panel (AppKit coordinates).
+    private(set) var screenFrame: CGRect = .zero
+
+    /// User override for notch width (Settings → General; slice E adds the UI).
     var notchWidthOverride: CGFloat?
 
-    /// Size of the expanded dropdown surface (below the notch). Sized for the worst
-    /// case — command bar (2-line result) + Today agenda + File Shelf + status row —
-    /// so nothing clips; sparser states just leave whitespace. (The panel is now
-    /// tall enough that a future scroll/section-collapse restructure is warranted.)
-    let expandedSize = NSSize(width: 380, height: 410)
+    /// Features that must keep the expanded panel open register a reason here
+    /// via `setPin`. Pinned suppresses hoverExit/clickAway collapse.
+    private(set) var pinReasons: Set<PinReason> = []
 
-    /// Width of each status section flanking the notch when collapsed. The left
-    /// flank holds the time plus the optional next-event chip, so this is sized for
-    /// both; the content hugs the notch edge and the empty remainder is
-    /// hit-test-transparent (click-through), so the wider footprint is harmless.
-    let sideWidth: CGFloat = 124
+    /// Measured height of the expanded content (the view reports it; drives the
+    /// expanded island height and the panel's interactive-rect hit testing).
+    /// Starts at a sane default so the first expansion isn't a zero-height flash.
+    var expandedContentHeight: CGFloat = 360
 
-    /// While true, a mouse-exit will not auto-collapse — the command bar is in use.
-    /// The view keeps this in sync with the command bar state.
-    @ObservationIgnored var pinnedOpen = false
+    /// Fired after `state` actually changes (the panel manages its click-away
+    /// monitor here).
+    @ObservationIgnored var onStateChange: ((NotchState) -> Void)?
 
-    /// Invoked after any state change that alters `currentFrame` (expand/collapse).
-    @ObservationIgnored var onLayoutChange: (() -> Void)?
+    /// Fired after geometry/screen updates (the panel re-applies its envelope).
+    @ObservationIgnored var onGeometryChange: (() -> Void)?
 
-    func update(geometry: NotchGeometry) {
-        self.geometry = geometry
+    @ObservationIgnored private var dismissTask: Task<Void, Never>?
+    @ObservationIgnored private let durations: TransientDurations
+
+    init(durations: TransientDurations = .standard) {
+        self.durations = durations
     }
 
-    func toggle() {
-        isExpanded.toggle()
-        onLayoutChange?()
-    }
+    // MARK: - Derived
 
-    func collapse() {
-        guard isExpanded else { return }
-        isExpanded = false
-        onLayoutChange?()
-    }
+    var isExpanded: Bool { state == .expanded }
+    var pinned: Bool { !pinReasons.isEmpty }
 
-    func expand() {
-        guard !isExpanded else { return }
-        isExpanded = true
-        onLayoutChange?()
-    }
-
-    /// Collapse because the pointer left the panel — unless pinned open.
-    func collapseOnMouseExit() {
-        guard !pinnedOpen else { return }
-        collapse()
+    var layout: NotchLayout? {
+        geometry.map { NotchLayout(geometry: $0, screenFrame: screenFrame) }
     }
 
     /// Notch width (user override, else sampled).
     var collapsedNotchWidth: CGFloat {
-        guard let geometry else { return NotchGeometry.fallbackWidth }
-        if let override = notchWidthOverride, override > 0 { return override }
-        return geometry.collapsedFrame.width
+        layout?.notchWidth(override: notchWidthOverride) ?? NotchGeometry.fallbackWidth
     }
 
     /// Notch / menu-bar height.
@@ -79,24 +67,124 @@ final class NotchViewModel {
         geometry?.notchHeight ?? NotchGeometry.fallbackHeight
     }
 
-    /// The frame the panel window should occupy right now, in AppKit screen
-    /// coordinates. Returns `nil` until geometry has been sampled at least once.
-    var currentFrame: NSRect? {
-        guard let geometry else { return nil }
-        let notch = geometry.collapsedFrame
-        let notchWidth = collapsedNotchWidth
+    /// Width of each interactive status flank beside the notch when collapsed.
+    var sideWidth: CGFloat {
+        (layout?.metrics ?? .standard).sideWidth
+    }
 
-        if !isExpanded {
-            // Collapsed: a thin bar at menu-bar level spanning the notch plus a
-            // status section on each side.
-            let width = notchWidth + 2 * sideWidth
-            let height = notch.height
-            return NSRect(x: notch.midX - width / 2, y: notch.maxY - height, width: width, height: height)
+    /// Island size for a state, using the measured expanded content height.
+    func islandSize(for state: NotchState) -> CGSize {
+        guard let layout else {
+            return CGSize(width: NotchGeometry.fallbackWidth, height: NotchGeometry.fallbackHeight)
+        }
+        return layout.islandSize(
+            for: state,
+            override: notchWidthOverride,
+            contentHeight: expandedContentHeight
+        )
+    }
+
+    // MARK: - Inputs
+
+    /// Feed one event through the state machine, applying its transition and
+    /// managing the auto-dismiss timer it schedules (or cancels).
+    func handle(_ event: NotchEvent) {
+        let transition = NotchStateMachine.transition(
+            from: state, on: event, pinned: pinned, durations: durations
+        )
+        let changed = transition.next != state
+        if changed { state = transition.next }
+
+        switch transition.next {
+        case .peek, .hud, .activity:
+            if let after = transition.autoDismissAfter, let kind = transientKind(of: transition.next) {
+                scheduleAutoDismiss(kind: kind, after: after)
+            }
+        case .collapsed, .expanded:
+            cancelAutoDismiss()
         }
 
-        // Expanded: a centered dropdown below the notch.
-        let width = max(expandedSize.width, notchWidth)
-        let height = notch.height + expandedSize.height
-        return NSRect(x: notch.midX - width / 2, y: notch.maxY - height, width: width, height: height)
+        if changed { onStateChange?(state) }
+    }
+
+    func update(geometry: NotchGeometry, screenFrame: CGRect) {
+        self.geometry = geometry
+        self.screenFrame = screenFrame
+        onGeometryChange?()
+    }
+
+    func setPin(_ reason: PinReason, _ active: Bool) {
+        if active {
+            pinReasons.insert(reason)
+        } else {
+            pinReasons.remove(reason)
+        }
+    }
+
+    // MARK: - Hit testing
+
+    /// Regions of the panel (in its bottom-left-origin view coordinates) that
+    /// should receive mouse events for the CURRENT state. Everything else in the
+    /// pre-sized envelope must fall through to windows below — the envelope
+    /// spans well past the visible island (docs/PARITY-ROADMAP.md §2.7 risk).
+    func interactiveRects() -> [CGRect] {
+        guard let layout else { return [] }
+        let panel = layout.panelFrame(override: notchWidthOverride)
+
+        func topCentered(_ size: CGSize) -> CGRect {
+            CGRect(
+                x: ((panel.width - size.width) / 2).rounded(),
+                y: panel.height - size.height,
+                width: size.width,
+                height: size.height
+            )
+        }
+
+        switch state {
+        case .collapsed:
+            // The whole strip (flank + notch + flank); SwiftUI contentShape
+            // narrows hits to the actual controls so empty flank areas stay
+            // click-through within it.
+            let strip = CGSize(
+                width: layout.collapsedStripWidth(override: notchWidthOverride),
+                height: layout.geometry.notchHeight
+            )
+            return [topCentered(strip)]
+        case .peek, .hud, .activity, .expanded:
+            return [topCentered(islandSize(for: state))]
+        }
+    }
+
+    // MARK: - Auto-dismiss clock
+
+    /// Whether a transient auto-dismiss is currently scheduled (test hook).
+    var hasPendingAutoDismiss: Bool {
+        guard let dismissTask else { return false }
+        return !dismissTask.isCancelled
+    }
+
+    private func transientKind(of state: NotchState) -> TransientKind? {
+        switch state {
+        case .peek: return .peek
+        case .hud: return .hud
+        case .activity: return .activity
+        case .collapsed, .expanded: return nil
+        }
+    }
+
+    private func scheduleAutoDismiss(kind: TransientKind, after seconds: TimeInterval) {
+        dismissTask?.cancel()
+        dismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+            self.dismissTask = nil
+            self.handle(.timeout(kind))
+        }
+    }
+
+    private func cancelAutoDismiss() {
+        dismissTask?.cancel()
+        dismissTask = nil
     }
 }

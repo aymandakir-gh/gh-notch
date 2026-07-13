@@ -7,6 +7,7 @@ import SwiftUI
 /// - Activate the app as an accessory (no Dock icon, no main menu focus steal).
 /// - Build the notch panel and attach the SwiftUI root view.
 /// - Reposition the panel when the active screen or its geometry changes.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let viewModel = NotchViewModel()
@@ -42,7 +43,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.notchPanel?.repositionToActiveScreen()
+            // queue: .main guarantees the main thread; make that visible to
+            // the compiler so the MainActor-isolated panel is reachable.
+            MainActor.assumeIsolated {
+                self?.notchPanel?.repositionToActiveScreen()
+            }
         }
     }
 }

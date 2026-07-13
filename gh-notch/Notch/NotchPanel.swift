@@ -1,27 +1,21 @@
 import AppKit
 import SwiftUI
 
-/// `NSHostingView` that reports when the pointer leaves its bounds, so the panel
-/// can auto-collapse on mouse-out (hover-to-peek behaviour). Tracking areas are
-/// permission-free, unlike global event monitors.
-final class MouseAwareHostingView<Content: View>: NSHostingView<Content> {
-    var onMouseExited: (() -> Void)?
+/// `NSHostingView` that constrains mouse events to the view model's interactive
+/// regions. The panel window is pre-sized to its maximum (expanded) envelope and
+/// never resizes, so most of it is empty air — `hitTest` must return nil there
+/// or an invisible rectangle would swallow clicks meant for windows below.
+/// Inside the interactive rects, SwiftUI's own hit testing (contentShape) takes
+/// over, preserving the fine-grained click-through of the collapsed flanks.
+final class NotchHostingView<Content: View>: NSHostingView<Content> {
+    var interactiveRects: (() -> [CGRect])?
 
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        for area in trackingAreas {
-            removeTrackingArea(area)
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        if let rects = interactiveRects?() {
+            let local = convert(point, from: superview)
+            guard rects.contains(where: { $0.contains(local) }) else { return nil }
         }
-        addTrackingArea(NSTrackingArea(
-            rect: .zero,
-            options: [.activeAlways, .mouseEnteredAndExited, .inVisibleRect],
-            owner: self,
-            userInfo: nil
-        ))
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        onMouseExited?()
+        return super.hitTest(point)
     }
 }
 
@@ -29,7 +23,9 @@ final class MouseAwareHostingView<Content: View>: NSHostingView<Content> {
 ///
 /// Renders above the menu bar (`.screenSaver` level), joins every Space, is
 /// non-activating (clicking it never steals key focus from the user's app), and
-/// is transparent so SwiftUI controls the visible shape.
+/// is transparent so SwiftUI controls the visible shape. Pre-sized to the
+/// maximum envelope (`NotchLayout.panelFrame`) — expand/collapse is a SwiftUI
+/// morph inside the fixed window, never a window resize.
 final class NotchPanel: NSPanel {
 
     private let viewModel: NotchViewModel
@@ -54,7 +50,7 @@ final class NotchPanel: NSPanel {
         isMovableByWindowBackground = false
         hidesOnDeactivate = false
         ignoresMouseEvents = false
-        acceptsMouseMovedEvents = true           // needed for mouse-exit tracking
+        acceptsMouseMovedEvents = true
 
         // Visible on every Space, and over full-screen apps' menu bar region.
         collectionBehavior = [
@@ -64,10 +60,13 @@ final class NotchPanel: NSPanel {
             .ignoresCycle
         ]
 
-        // Re-frame the window and manage the click-away monitor on expand/collapse.
-        viewModel.onLayoutChange = { [weak self] in
-            self?.applyCurrentFrame()
-            self?.updateClickAwayMonitor()
+        // The window envelope changes only when screen geometry does; state
+        // changes just toggle the click-away monitor.
+        viewModel.onGeometryChange = { [weak self] in
+            self?.applyPanelEnvelope()
+        }
+        viewModel.onStateChange = { [weak self] state in
+            self?.updateClickAwayMonitor(isExpanded: state == .expanded)
         }
     }
 
@@ -82,51 +81,41 @@ final class NotchPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    /// Install the SwiftUI root as the panel's content, wiring mouse-exit to
-    /// auto-collapse.
+    /// Install the SwiftUI root as the panel's content, wiring the interactive
+    /// hit-test regions to the view model.
     func attachContent<Content: View>(_ content: Content) {
-        let hosting = MouseAwareHostingView(rootView: content)
-        hosting.onMouseExited = { [weak self] in
-            self?.viewModel.collapseOnMouseExit()
+        let hosting = NotchHostingView(rootView: content)
+        hosting.interactiveRects = { [weak viewModel] in
+            viewModel?.interactiveRects() ?? []
         }
         hosting.translatesAutoresizingMaskIntoConstraints = true
         hosting.autoresizingMask = [.width, .height]
         contentView = hosting
     }
 
-    /// Sample the active screen and move/size the panel to match the view model's
-    /// current frame. Safe to call repeatedly (screen changes, expand/collapse).
+    /// Sample the active screen and apply the (state-independent) envelope.
+    /// Safe to call repeatedly (screen parameter changes).
     func repositionToActiveScreen() {
-        guard let geometry = NotchGeometry.forActiveScreen() else { return }
-        viewModel.update(geometry: geometry)
-        applyCurrentFrame()
+        guard let screen = NotchGeometry.activeScreen() else { return }
+        viewModel.update(geometry: .sample(screen), screenFrame: screen.frame)
     }
 
-    /// Resize/reposition to whatever the view model currently reports, animating
-    /// the expand/collapse transition.
-    func applyCurrentFrame(animated: Bool = true) {
-        guard let frame = viewModel.currentFrame else { return }
-        if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.20
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                animator().setFrame(frame, display: true)
-            }
-        } else {
-            setFrame(frame, display: true)
-        }
+    private func applyPanelEnvelope() {
+        guard let layout = viewModel.layout else { return }
+        setFrame(layout.panelFrame(override: viewModel.notchWidthOverride), display: true)
     }
 
     /// While expanded, watch for clicks outside the panel (i.e. in another app or
-    /// on the desktop) and collapse. Global monitors only fire for events the app
-    /// does not receive itself, so clicks inside the panel are unaffected.
-    private func updateClickAwayMonitor() {
-        if viewModel.isExpanded {
+    /// on the desktop) and feed a clickAway event (the machine respects pins).
+    /// Global monitors only fire for events the app does not receive itself, so
+    /// clicks inside the panel are unaffected.
+    private func updateClickAwayMonitor(isExpanded: Bool) {
+        if isExpanded {
             guard clickAwayMonitor == nil else { return }
             clickAwayMonitor = NSEvent.addGlobalMonitorForEvents(
                 matching: [.leftMouseDown, .rightMouseDown]
             ) { [weak self] _ in
-                self?.viewModel.collapse()
+                self?.viewModel.handle(.clickAway)
             }
         } else if let monitor = clickAwayMonitor {
             NSEvent.removeMonitor(monitor)

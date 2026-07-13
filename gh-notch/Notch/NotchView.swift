@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// SwiftUI root rendered inside the notch panel.
+/// SwiftUI root rendered inside the (pre-sized, never-resizing) notch panel.
 ///
-/// Collapsed: a thin status bar at menu-bar level — time to the left of the
-/// camera, battery to the right (transparent, so it reads as part of the menu
-/// bar). Hover the notch (or click anywhere) to open.
-/// Expanded: a centered dropdown below the notch — AI command bar + clock/date +
-/// battery + Settings. Closes on Esc, a click outside, or when the pointer leaves
-/// (unless the command bar is in use).
+/// Collapsed: the v0.3 look — a thin transparent status strip at menu-bar level,
+/// time to the left of the camera, battery to the right. Hover the notch (or
+/// click) to open. Transients (peek/hud/activity) draw a small black island
+/// dipping below the notch. Expanded: the black dropdown, height driven by its
+/// measured content (capped), springing between states per `NotchMotion`.
+/// Closes on Esc, click-away, swipe up, or pointer-exit (unless pinned).
 struct NotchView: View {
     @Bindable var viewModel: NotchViewModel
     @State private var commandBar = CommandBarViewModel()
@@ -17,17 +17,24 @@ struct NotchView: View {
     @State private var shelf = ShelfStore()
 
     @State private var gearHover = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
-            if viewModel.isExpanded {
+            switch viewModel.state {
+            case .collapsed:
+                collapsed.transition(.opacity)
+            case .peek, .hud, .activity:
+                transientIsland.transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.9, anchor: .top)),
+                    removal: .opacity
+                ))
+            case .expanded:
                 // Grows down out of the notch: scale up from the top edge + fade.
                 expanded.transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .top)),
                     removal: .opacity
                 ))
-            } else {
-                collapsed.transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -36,22 +43,20 @@ struct NotchView: View {
             clock.start()
             calendar.start() // reads access + polls; never prompts (that waits for expand)
         }
-        .onChange(of: commandBar.shouldStayOpen) { _, _ in syncPinnedOpen() }
-        .onChange(of: calendar.isRequestingAccess) { _, _ in syncPinnedOpen() }
-        .onChange(of: shelf.isDraggingOut) { _, _ in syncPinnedOpen() }
-        .animation(.easeOut(duration: 0.22), value: viewModel.isExpanded)
+        .onChange(of: commandBar.shouldStayOpen) { _, active in
+            viewModel.setPin(.commandBar, active)
+        }
+        .onChange(of: calendar.isRequestingAccess) { _, active in
+            viewModel.setPin(.permissionDialog, active)
+        }
+        .onChange(of: shelf.isDraggingOut) { _, active in
+            viewModel.setPin(.shelfDrag, active)
+        }
+        .animation(NotchMotion.stateChange(reduceMotion: reduceMotion), value: viewModel.state)
+        .animation(NotchMotion.stateChange(reduceMotion: reduceMotion), value: viewModel.expandedContentHeight)
     }
 
-    /// Keep the panel open (no mouse-exit auto-collapse) while the command bar is in
-    /// use, the calendar permission dialog is up, or a shelf item is being dragged
-    /// out — otherwise the panel would vanish from under the system prompt / drag.
-    private func syncPinnedOpen() {
-        viewModel.pinnedOpen = commandBar.shouldStayOpen
-            || calendar.isRequestingAccess
-            || shelf.isDraggingOut
-    }
-
-    // MARK: - Collapsed: status flanking the physical notch
+    // MARK: - Collapsed: status flanking the physical notch (v0.3 look preserved)
 
     private var collapsed: some View {
         HStack(spacing: 0) {
@@ -68,7 +73,7 @@ struct NotchView: View {
                     .foregroundStyle(.white)
             }
             .contentShape(Rectangle())
-            .onTapGesture { viewModel.toggle() }
+            .onTapGesture { viewModel.handle(.tap) }
             .padding(.trailing, collapsedGap)
             .frame(width: viewModel.sideWidth, alignment: .trailing)
 
@@ -76,13 +81,13 @@ struct NotchView: View {
             Color.clear
                 .frame(width: viewModel.collapsedNotchWidth)
                 .contentShape(Rectangle())
-                .onHover { hovering in if hovering { viewModel.expand() } }
-                .onTapGesture { viewModel.toggle() }
+                .onHover { hovering in if hovering { viewModel.handle(.hoverEnter) } }
+                .onTapGesture { viewModel.handle(.tap) }
 
             // Right of the notch: battery, hugging the camera.
             collapsedBattery
                 .contentShape(Rectangle())
-                .onTapGesture { viewModel.toggle() }
+                .onTapGesture { viewModel.handle(.tap) }
                 .padding(.leading, collapsedGap)
                 .frame(width: viewModel.sideWidth, alignment: .leading)
         }
@@ -125,15 +130,65 @@ struct NotchView: View {
         return .white
     }
 
-    // MARK: - Expanded: dropdown below the notch
+    // MARK: - Transients: a small island dipping below the notch
+    // Placeholder content until v0.5 (peeks), v0.6 (huds), v0.7 (activities)
+    // give these real payloads — the states are unreachable until then, but the
+    // island morph and layout are final now.
+
+    private var transientIsland: some View {
+        let size = viewModel.islandSize(for: viewModel.state)
+        return HStack(spacing: 6) {
+            Image(systemName: transientSymbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+        }
+        .frame(width: size.width, height: size.height, alignment: .bottom)
+        .padding(.bottom, 0)
+        .background(NotchIslandBackground(state: viewModel.state))
+        .onTapGesture { viewModel.handle(.tap) }
+    }
+
+    private var transientSymbol: String {
+        switch viewModel.state {
+        case .hud(.volume): return "speaker.wave.2.fill"
+        case .hud(.brightness): return "sun.max.fill"
+        case .hud(.keyboardBacklight): return "keyboard"
+        case .hud(.capsLock): return "capslock.fill"
+        case .hud(.charging): return "bolt.fill"
+        case .activity: return "circle.hexagongrid.fill"
+        case .peek: return "music.note"
+        case .collapsed, .expanded: return "circle"
+        }
+    }
+
+    // MARK: - Expanded: dropdown below the notch, content-driven height
 
     private var expanded: some View {
-        VStack(spacing: 0) {
+        let size = viewModel.islandSize(for: .expanded)
+        return VStack(spacing: 0) {
             Color.clear.frame(height: viewModel.collapsedNotchHeight) // blends with the notch
-            expandedSurface
-                .frame(height: viewModel.expandedSize.height)
+            expandedScroll
         }
-        .background(panelShape)
+        .frame(width: size.width, height: size.height)
+        .background(NotchIslandBackground(state: .expanded))
+        .onHover { hovering in
+            if !hovering { viewModel.handle(.hoverExit) }
+        }
+    }
+
+    /// The content column, measured so the island hugs it (capped by
+    /// `NotchLayout.maxExpandedContentHeight`); scrolls only when capped.
+    private var expandedScroll: some View {
+        ScrollView(.vertical) {
+            expandedSurface
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    viewModel.expandedContentHeight = height
+                }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollIndicators(.never)
     }
 
     private var expandedSurface: some View {
@@ -162,13 +217,12 @@ struct NotchView: View {
                 }
                 .buttonStyle(.plain)
                 .onHover { gearHover = $0 }
-                .animation(.easeOut(duration: 0.12), value: gearHover)
+                .animation(NotchMotion.micro, value: gearHover)
                 .help("Settings")
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(16)
-        .onExitCommand { viewModel.collapse() }
+        .onExitCommand { viewModel.handle(.escape) }
         .task {
             // Expanding the panel is the user activating the feature — only now do
             // we (lazily) request calendar access, never at launch.
@@ -178,21 +232,6 @@ struct NotchView: View {
             commandBar.reset()
             gearHover = false // avoid the gear re-appearing pre-hovered if collapsed via Esc
         }
-    }
-
-    // MARK: - Shape (rounded dropdown, square top so it hugs the notch)
-
-    private var panelShape: some View {
-        let shape = UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: 22,
-            bottomTrailingRadius: 22,
-            topTrailingRadius: 0,
-            style: .continuous
-        )
-        return shape
-            .fill(.black)
-            .overlay(shape.strokeBorder(.white.opacity(0.12), lineWidth: 1))
     }
 }
 

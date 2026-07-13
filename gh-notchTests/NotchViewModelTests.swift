@@ -1,105 +1,170 @@
 import XCTest
 @testable import gh_notch
 
+@MainActor
 final class NotchViewModelTests: XCTestCase {
 
+    /// Short transient durations so async timer tests stay fast but keep
+    /// generous margins against slow CI runners.
+    private func makeViewModel() -> NotchViewModel {
+        NotchViewModel(durations: TransientDurations(peek: 0.3, hud: 0.3, activity: 0.3))
+    }
+
+    private func sleep(_ seconds: TimeInterval) async {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+    }
+
+    // MARK: - Basics
+
     func testStartsCollapsed() {
-        let viewModel = NotchViewModel()
-        XCTAssertFalse(viewModel.isExpanded)
+        XCTAssertEqual(makeViewModel().state, .collapsed)
+        XCTAssertFalse(makeViewModel().isExpanded)
     }
 
-    func testToggleFlipsStateAndFiresLayoutChange() {
-        let viewModel = NotchViewModel()
-        var layoutChangeCount = 0
-        viewModel.onLayoutChange = { layoutChangeCount += 1 }
-
-        viewModel.toggle()
+    func testTapExpandsAndEscapeCollapses() {
+        let viewModel = makeViewModel()
+        viewModel.handle(.tap)
         XCTAssertTrue(viewModel.isExpanded)
-        XCTAssertEqual(layoutChangeCount, 1)
-
-        viewModel.toggle()
-        XCTAssertFalse(viewModel.isExpanded)
-        XCTAssertEqual(layoutChangeCount, 2)
+        viewModel.handle(.escape)
+        XCTAssertEqual(viewModel.state, .collapsed)
     }
 
-    func testExpandAndCollapseAreIdempotent() {
-        let viewModel = NotchViewModel()
-        var layoutChangeCount = 0
-        viewModel.onLayoutChange = { layoutChangeCount += 1 }
+    func testStateChangeCallbackFiresOnlyOnRealChanges() {
+        let viewModel = makeViewModel()
+        var changes: [NotchState] = []
+        viewModel.onStateChange = { changes.append($0) }
 
-        viewModel.expand()
-        viewModel.expand() // no-op, already expanded
+        viewModel.handle(.tap)          // collapsed -> expanded
+        viewModel.handle(.tap)          // no-op
+        viewModel.handle(.hoverEnter)   // no-op
+        viewModel.handle(.escape)       // expanded -> collapsed
+        viewModel.handle(.escape)       // no-op
+
+        XCTAssertEqual(changes, [.expanded, .collapsed])
+    }
+
+    // MARK: - Pinning
+
+    func testPinBlocksHoverExitAndClickAwayUntilCleared() {
+        let viewModel = makeViewModel()
+        viewModel.handle(.tap)
+        viewModel.setPin(.commandBar, true)
+
+        viewModel.handle(.hoverExit)
         XCTAssertTrue(viewModel.isExpanded)
-        XCTAssertEqual(layoutChangeCount, 1)
+        viewModel.handle(.clickAway)
+        XCTAssertTrue(viewModel.isExpanded)
 
-        viewModel.collapse()
-        viewModel.collapse() // no-op, already collapsed
-        XCTAssertFalse(viewModel.isExpanded)
-        XCTAssertEqual(layoutChangeCount, 2)
+        viewModel.setPin(.commandBar, false)
+        viewModel.handle(.hoverExit)
+        XCTAssertEqual(viewModel.state, .collapsed)
     }
 
-    func testCurrentFrameIsNilWithoutGeometry() {
-        let viewModel = NotchViewModel()
-        XCTAssertNil(viewModel.currentFrame)
+    func testPinnedWhileAnyReasonRemains() {
+        let viewModel = makeViewModel()
+        viewModel.setPin(.commandBar, true)
+        viewModel.setPin(.shelfDrag, true)
+        viewModel.setPin(.commandBar, false)
+        XCTAssertTrue(viewModel.pinned)
+        viewModel.setPin(.shelfDrag, false)
+        XCTAssertFalse(viewModel.pinned)
     }
 
-    func testCollapsedFrameFlanksTheNotch() {
-        let viewModel = NotchViewModel()
-        let notch = NSRect(x: 800, y: 1060, width: 200, height: 32)
-        let geometry = NotchGeometry.stub(collapsedFrame: notch, notchHeight: 32, hasNotch: true)
-        viewModel.update(geometry: geometry)
+    func testEscapeCollapsesEvenWhenPinned() {
+        let viewModel = makeViewModel()
+        viewModel.handle(.tap)
+        viewModel.setPin(.permissionDialog, true)
+        viewModel.handle(.escape)
+        XCTAssertEqual(viewModel.state, .collapsed)
+    }
 
-        // Collapsed spans the notch plus a status section on each side, at the
-        // menu-bar level (same height as the notch), centered on the notch.
-        let expectedWidth = notch.width + 2 * viewModel.sideWidth
-        let expected = NSRect(
-            x: notch.midX - expectedWidth / 2,
-            y: notch.maxY - notch.height,
-            width: expectedWidth,
-            height: notch.height
+    // MARK: - Auto-dismiss clock
+
+    func testTransientSchedulesDismissAndCollapsesAfterDuration() async {
+        let viewModel = makeViewModel()
+        viewModel.handle(.hudEvent(.volume))
+        XCTAssertEqual(viewModel.state, .hud(.volume))
+        XCTAssertTrue(viewModel.hasPendingAutoDismiss)
+
+        await sleep(0.6) // duration 0.3 + margin
+        XCTAssertEqual(viewModel.state, .collapsed)
+        XCTAssertFalse(viewModel.hasPendingAutoDismiss)
+    }
+
+    func testExpandingCancelsThePendingDismiss() async {
+        let viewModel = makeViewModel()
+        viewModel.handle(.hudEvent(.volume))
+        viewModel.handle(.tap)
+        XCTAssertTrue(viewModel.isExpanded)
+        XCTAssertFalse(viewModel.hasPendingAutoDismiss)
+
+        await sleep(0.6)
+        XCTAssertTrue(viewModel.isExpanded, "a cancelled hud timer must never collapse the panel")
+    }
+
+    func testReplacingTransientRestartsTheClock() async {
+        let viewModel = makeViewModel()
+        viewModel.handle(.hudEvent(.volume))
+        await sleep(0.2)                     // 0.2 of 0.3 elapsed
+        viewModel.handle(.hudEvent(.brightness)) // restart
+        await sleep(0.2)                     // 0.4 since first post, 0.2 since restart
+        XCTAssertEqual(viewModel.state, .hud(.brightness), "restarted timer must not fire on the old deadline")
+        await sleep(0.4)
+        XCTAssertEqual(viewModel.state, .collapsed)
+    }
+
+    // MARK: - Geometry + interactive rects
+
+    private let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
+
+    private func applyTestGeometry(_ viewModel: NotchViewModel) {
+        let geometry = NotchGeometry(
+            hasNotch: true,
+            collapsedFrame: CGRect(x: (1512 - 200) / 2, y: 982 - 32, width: 200, height: 32),
+            notchHeight: 32
         )
-        XCTAssertEqual(viewModel.currentFrame, expected)
+        viewModel.update(geometry: geometry, screenFrame: screen)
     }
 
-    func testExpandedFrameGrowsDownwardAndStaysTopAligned() {
-        let viewModel = NotchViewModel()
-        let collapsed = NSRect(x: 800, y: 1060, width: 200, height: 32)
-        let geometry = NotchGeometry.stub(collapsedFrame: collapsed, notchHeight: 32, hasNotch: true)
-        viewModel.update(geometry: geometry)
-        viewModel.expand()
+    func testGeometryUpdateFiresCallbackAndBuildsLayout() {
+        let viewModel = makeViewModel()
+        var fired = 0
+        viewModel.onGeometryChange = { fired += 1 }
+        XCTAssertNil(viewModel.layout)
 
-        guard let frame = viewModel.currentFrame else {
-            return XCTFail("expected a frame once geometry is set")
-        }
-        // Top edge unchanged (glued to the notch).
-        XCTAssertEqual(frame.maxY, collapsed.maxY, accuracy: 0.001)
-        // Centered on the notch.
-        XCTAssertEqual(frame.midX, collapsed.midX, accuracy: 0.001)
-        // Taller than the notch.
-        XCTAssertGreaterThan(frame.height, collapsed.height)
+        applyTestGeometry(viewModel)
+        XCTAssertEqual(fired, 1)
+        XCTAssertNotNil(viewModel.layout)
+        XCTAssertEqual(viewModel.collapsedNotchWidth, 200)
+        XCTAssertEqual(viewModel.collapsedNotchHeight, 32)
     }
 
-    func testNotchWidthOverrideWidensTheCollapsedBar() {
-        let viewModel = NotchViewModel()
-        let collapsed = NSRect(x: 800, y: 1060, width: 200, height: 32)
-        let geometry = NotchGeometry.stub(collapsedFrame: collapsed, notchHeight: 32, hasNotch: true)
-        viewModel.update(geometry: geometry)
-        viewModel.notchWidthOverride = 300
+    func testInteractiveRectsCoverStripWhenCollapsedAndIslandWhenExpanded() throws {
+        let viewModel = makeViewModel()
+        XCTAssertEqual(viewModel.interactiveRects(), []) // no geometry yet: pass-through
 
-        guard let frame = viewModel.currentFrame else {
-            return XCTFail("expected a frame once geometry is set")
-        }
-        XCTAssertEqual(frame.width, 300 + 2 * viewModel.sideWidth, accuracy: 0.001)
-        XCTAssertEqual(frame.midX, collapsed.midX, accuracy: 0.001)
+        applyTestGeometry(viewModel)
+        let layout = try XCTUnwrap(viewModel.layout)
+        let panel = layout.panelFrame()
+
+        let collapsedRect = try XCTUnwrap(viewModel.interactiveRects().first)
+        XCTAssertEqual(collapsedRect.width, layout.collapsedStripWidth(), accuracy: 1)
+        XCTAssertEqual(collapsedRect.height, 32, accuracy: 0.5)
+        XCTAssertEqual(collapsedRect.maxY, panel.height, accuracy: 0.5) // hugs the top
+
+        viewModel.handle(.tap)
+        viewModel.expandedContentHeight = 300
+        let expandedRect = try XCTUnwrap(viewModel.interactiveRects().first)
+        XCTAssertEqual(expandedRect.width, layout.metrics.expandedWidth, accuracy: 1)
+        XCTAssertEqual(expandedRect.height, 32 + 300, accuracy: 0.5)
+        XCTAssertEqual(expandedRect.maxY, panel.height, accuracy: 0.5)
+        XCTAssertEqual(expandedRect.midX, panel.width / 2, accuracy: 1) // centered
     }
-}
 
-// MARK: - Test helpers
-
-extension NotchGeometry {
-    /// Memberwise stub for tests. The production initializer is screen-driven and
-    /// cannot run headlessly, so tests construct geometry directly.
-    static func stub(collapsedFrame: NSRect, notchHeight: CGFloat, hasNotch: Bool) -> NotchGeometry {
-        NotchGeometry(hasNotch: hasNotch, collapsedFrame: collapsedFrame, notchHeight: notchHeight)
+    func testIslandSizeUsesMeasuredContentHeight() {
+        let viewModel = makeViewModel()
+        applyTestGeometry(viewModel)
+        viewModel.expandedContentHeight = 250
+        XCTAssertEqual(viewModel.islandSize(for: .expanded).height, 32 + 250)
     }
 }
