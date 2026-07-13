@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let viewModel = NotchViewModel()
     private var notchPanel: NotchPanel?
+    private var gestureMonitor: GestureMonitor?
     private var screenObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -25,10 +26,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.orderFrontRegardless()
         notchPanel = panel
 
+        let gestures = GestureMonitor(viewModel: viewModel, panel: panel)
+        gestures.start()
+        gestureMonitor = gestures
+
         observeScreenChanges()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        gestureMonitor?.stop()
+        gestureMonitor = nil
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }
