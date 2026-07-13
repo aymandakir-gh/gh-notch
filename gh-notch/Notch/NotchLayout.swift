@@ -1,5 +1,5 @@
-import Foundation
 import CoreGraphics
+import Foundation
 
 /// Pure layout math for the morphing panel (docs/PARITY-ROADMAP.md §2.2–2.3).
 ///

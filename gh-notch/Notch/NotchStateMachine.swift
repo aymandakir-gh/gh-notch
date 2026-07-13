@@ -41,11 +41,33 @@ enum NotchStateMachine {
         durations: TransientDurations = .standard
     ) -> NotchTransition {
         switch event {
+        case .hudEvent, .activityPosted, .peekPosted:
+            return transitionForPost(event, from: state, durations: durations)
+        case .activityDismissed(let id):
+            return transitionForActivityDismissed(id, from: state)
+        case .timeout(let kind):
+            return transitionForTimeout(kind, from: state)
+        case .hoverEnter, .tap:
+            return transitionForOpen(event, from: state)
+        case .escape, .hoverExit, .clickAway:
+            return transitionForClose(event, from: state, pinned: pinned)
+        case .swipe(let direction):
+            return transitionForSwipe(direction, from: state, pinned: pinned)
+        }
+    }
 
+    // MARK: - Event families
+
+    /// Transient posts, applying the hud > activity > peek priority ladder.
+    private static func transitionForPost(
+        _ event: NotchEvent,
+        from state: NotchState,
+        durations: TransientDurations
+    ) -> NotchTransition {
+        switch event {
         case .hudEvent(let kind):
             if case .expanded = state { return stay(state) }
             return NotchTransition(next: .hud(kind), autoDismissAfter: durations.hud)
-
         case .activityPosted(let id):
             switch state {
             case .expanded, .hud:
@@ -53,7 +75,6 @@ enum NotchStateMachine {
             case .collapsed, .peek, .activity:
                 return NotchTransition(next: .activity(id), autoDismissAfter: durations.activity)
             }
-
         case .peekPosted(let content):
             switch state {
             case .collapsed, .peek:
@@ -61,21 +82,38 @@ enum NotchStateMachine {
             case .expanded, .hud, .activity:
                 return stay(state)
             }
+        default:
+            return stay(state) // not a post event; unreachable from transition()
+        }
+    }
 
-        case .activityDismissed(let id):
-            if case .activity(let current) = state, current == id {
-                return NotchTransition(next: .collapsed, autoDismissAfter: nil)
-            }
-            return stay(state)
+    private static func transitionForActivityDismissed(
+        _ id: ActivityID,
+        from state: NotchState
+    ) -> NotchTransition {
+        if case .activity(let current) = state, current == id {
+            return NotchTransition(next: .collapsed, autoDismissAfter: nil)
+        }
+        return stay(state)
+    }
 
-        case .timeout(let kind):
-            switch (state, kind) {
-            case (.peek, .peek), (.hud, .hud), (.activity, .activity):
-                return NotchTransition(next: .collapsed, autoDismissAfter: nil)
-            default:
-                return stay(state) // stale timer — never dismiss a different state
-            }
+    private static func transitionForTimeout(
+        _ kind: TransientKind,
+        from state: NotchState
+    ) -> NotchTransition {
+        switch (state, kind) {
+        case (.peek, .peek), (.hud, .hud), (.activity, .activity):
+            return NotchTransition(next: .collapsed, autoDismissAfter: nil)
+        default:
+            return stay(state) // stale timer — never dismiss a different state
+        }
+    }
 
+    private static func transitionForOpen(
+        _ event: NotchEvent,
+        from state: NotchState
+    ) -> NotchTransition {
+        switch event {
         case .hoverEnter:
             switch state {
             case .collapsed, .peek, .activity:
@@ -84,23 +122,30 @@ enum NotchStateMachine {
                 // Hovering a hud must not yank the panel open mid volume-change.
                 return stay(state)
             }
-
         case .tap:
             if case .expanded = state { return stay(state) }
             return NotchTransition(next: .expanded, autoDismissAfter: nil)
+        default:
+            return stay(state) // not an open event; unreachable from transition()
+        }
+    }
 
-        case .swipe(let direction):
-            return transitionForSwipe(direction, from: state, pinned: pinned)
-
+    private static func transitionForClose(
+        _ event: NotchEvent,
+        from state: NotchState,
+        pinned: Bool
+    ) -> NotchTransition {
+        switch event {
         case .escape:
             if case .collapsed = state { return stay(state) }
             return NotchTransition(next: .collapsed, autoDismissAfter: nil)
-
         case .hoverExit, .clickAway:
             if case .expanded = state, !pinned {
                 return NotchTransition(next: .collapsed, autoDismissAfter: nil)
             }
             return stay(state)
+        default:
+            return stay(state) // not a close event; unreachable from transition()
         }
     }
 
