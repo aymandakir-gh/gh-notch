@@ -21,8 +21,10 @@ struct NotchGeometry: Equatable {
     // MARK: - Tunables
 
     /// Width used for the collapsed pill when the display has no notch, or when
-    /// the notch width cannot be derived from `safeAreaInsets`.
-    static let fallbackWidth: CGFloat = 220
+    /// the notch width cannot be derived from `safeAreaInsets`. 185pt matches
+    /// the field-verified default other notch apps converged on for the
+    /// drawn pill (docs/PARITY-ROADMAP.md §2.5).
+    static let fallbackWidth: CGFloat = 185
 
     /// Default collapsed height when `safeAreaInsets.top` is zero (non-notched).
     static let fallbackHeight: CGFloat = 32

@@ -42,6 +42,7 @@ final class NotchPanel: NSPanel {
         )
 
         isFloatingPanel = true
+        isReleasedWhenClosed = false             // ARC owns panels; PanelManager closes them
         level = .screenSaver                     // above the menu bar
         isOpaque = false
         backgroundColor = .clear

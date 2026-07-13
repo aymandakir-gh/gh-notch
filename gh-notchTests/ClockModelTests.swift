@@ -1,6 +1,7 @@
 import XCTest
 @testable import gh_notch
 
+@MainActor
 final class ClockModelTests: XCTestCase {
 
     func testNowReflectsInjectedClock() {

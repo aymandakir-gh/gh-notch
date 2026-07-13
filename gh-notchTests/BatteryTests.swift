@@ -2,6 +2,7 @@ import XCTest
 import IOKit.ps
 @testable import gh_notch
 
+@MainActor
 final class BatteryTests: XCTestCase {
 
     // MARK: - Snapshot mapping from IOKit dictionaries

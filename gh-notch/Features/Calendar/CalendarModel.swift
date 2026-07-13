@@ -1,3 +1,4 @@
+import EventKit
 import Foundation
 import Observation
 
@@ -20,6 +21,7 @@ final class CalendarModel {
     @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private var storeObserver: NSObjectProtocol?
 
     init(
         service: CalendarService = EventKitCalendarService(),
@@ -56,10 +58,19 @@ final class CalendarModel {
         agenda = CalendarLogic.agenda(from: events, now: reference, calendar: calendar)
     }
 
-    /// Initial refresh plus a low-frequency poll so relative times and newly added
-    /// events stay current. Does NOT prompt for access.
+    /// Initial refresh, event-driven updates on any calendar-store change, plus
+    /// a low-frequency poll so relative times stay current. Does NOT prompt.
     func start() {
         Task { await refresh() }
+        if storeObserver == nil {
+            storeObserver = NotificationCenter.default.addObserver(
+                forName: .EKEventStoreChanged,
+                object: nil,
+                queue: .main
+            ) { _ in
+                Task { @MainActor [weak self] in await self?.refresh() }
+            }
+        }
         guard timer == nil else { return }
         let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in await self?.refresh() }
@@ -69,6 +80,10 @@ final class CalendarModel {
     }
 
     func stop() {
+        if let storeObserver {
+            NotificationCenter.default.removeObserver(storeObserver)
+        }
+        storeObserver = nil
         timer?.invalidate()
         timer = nil
     }

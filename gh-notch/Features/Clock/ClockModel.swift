@@ -1,9 +1,10 @@
 import Foundation
 import Observation
 
-/// Observable clock: current time + localized date, ticking each second while the
-/// panel is open. Injectable clock for tests.
+/// Observable clock: current time + localized date, ticking each second while
+/// started. Injectable clock for tests.
 @Observable
+@MainActor
 final class ClockModel {
 
     private(set) var now: Date
@@ -16,22 +17,23 @@ final class ClockModel {
         self.now = clock()
     }
 
-    deinit {
-        timer?.invalidate()
-    }
+    // No deinit cleanup: app-lifetime model, stop() tears down (see
+    // CalendarModel for the strict-concurrency rationale).
 
-    /// Begin ticking. Called when the panel expands.
+    /// Begin ticking.
     func start() {
         guard timer == nil else { return }
         tick()
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            self?.tick()
+            Task { @MainActor [weak self] in
+                self?.tick()
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }
 
-    /// Stop ticking. Called when the panel collapses.
+    /// Stop ticking.
     func stop() {
         timer?.invalidate()
         timer = nil

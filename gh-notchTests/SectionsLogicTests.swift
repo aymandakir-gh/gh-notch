@@ -92,4 +92,45 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.disabledSections, [])
         defaults.removePersistentDomain(forName: suite)
     }
+
+    func testDisplayAndBehaviorKeysDefaultAndPersist() {
+        let suite = "test.appsettings.\(UUID().uuidString)"
+        let (store, defaults) = makeStore(suite: suite)
+
+        XCTAssertEqual(store.showOnDisplays, .builtInOnly)
+        XCTAssertEqual(store.hoverDwell, NotchMotion.defaultHoverDwell, accuracy: 0.001)
+        XCTAssertNil(store.notchWidthOverride)
+
+        store.showOnDisplays = .all
+        store.hoverDwell = 0.25
+        store.notchWidthOverride = 240
+
+        let reloaded = AppSettingsStore(defaults: defaults)
+        XCTAssertEqual(reloaded.showOnDisplays, .all)
+        XCTAssertEqual(reloaded.hoverDwell, 0.25, accuracy: 0.001)
+        XCTAssertEqual(reloaded.notchWidthOverride, 240)
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    func testClearingWidthOverrideRemovesTheKey() {
+        let suite = "test.appsettings.\(UUID().uuidString)"
+        let (store, defaults) = makeStore(suite: suite)
+
+        store.notchWidthOverride = 300
+        store.notchWidthOverride = nil
+        let reloaded = AppSettingsStore(defaults: defaults)
+        XCTAssertNil(reloaded.notchWidthOverride)
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    func testHoverDwellIsClampedOnLoad() {
+        let suite = "test.appsettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite) ?? .standard
+        defaults.removePersistentDomain(forName: suite)
+        defaults.set(9.0, forKey: "display.hoverDwell") // absurd persisted value
+
+        let store = AppSettingsStore(defaults: defaults)
+        XCTAssertEqual(store.hoverDwell, 0.5, accuracy: 0.001)
+        defaults.removePersistentDomain(forName: suite)
+    }
 }

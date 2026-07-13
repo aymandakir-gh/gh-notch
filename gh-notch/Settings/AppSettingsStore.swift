@@ -27,6 +27,28 @@ final class AppSettingsStore {
         didSet { defaults.set(blendCollapsed, forKey: Keys.blendCollapsed) }
     }
 
+    /// Which displays host a panel. `PanelManager` observes and rebuilds.
+    var showOnDisplays: ShowOnDisplays {
+        didSet { defaults.set(showOnDisplays.rawValue, forKey: Keys.showOnDisplays) }
+    }
+
+    /// Seconds the pointer must dwell on the notch before hover expands the
+    /// panel — kills accidental expansions from crossing the screen top.
+    var hoverDwell: TimeInterval {
+        didSet { defaults.set(hoverDwell, forKey: Keys.hoverDwell) }
+    }
+
+    /// Manual notch/pill width in points; nil = automatic (sampled).
+    var notchWidthOverride: Double? {
+        didSet {
+            if let notchWidthOverride {
+                defaults.set(notchWidthOverride, forKey: Keys.notchWidthOverride)
+            } else {
+                defaults.removeObject(forKey: Keys.notchWidthOverride)
+            }
+        }
+    }
+
     /// Sections to render right now, in order.
     var visibleSections: [ExpandedSection] {
         SectionsLogic.visibleSections(disabled: disabledSections)
@@ -45,6 +67,9 @@ final class AppSettingsStore {
     private enum Keys {
         static let disabledSections = "feature.sections.disabled"
         static let blendCollapsed = "display.blendCollapsed"
+        static let showOnDisplays = "display.showOn"
+        static let hoverDwell = "display.hoverDwell"
+        static let notchWidthOverride = "display.notchWidthOverride"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -52,6 +77,11 @@ final class AppSettingsStore {
         let raw = defaults.stringArray(forKey: Keys.disabledSections) ?? []
         self.disabledSections = SectionsLogic.disabledSet(fromRawValues: raw)
         self.blendCollapsed = defaults.object(forKey: Keys.blendCollapsed) as? Bool ?? true
+        self.showOnDisplays = defaults.string(forKey: Keys.showOnDisplays)
+            .flatMap(ShowOnDisplays.init(rawValue:)) ?? .builtInOnly
+        let dwell = defaults.object(forKey: Keys.hoverDwell) as? Double
+        self.hoverDwell = dwell.map { min(max($0, 0.0), 0.5) } ?? NotchMotion.defaultHoverDwell
+        self.notchWidthOverride = defaults.object(forKey: Keys.notchWidthOverride) as? Double
     }
 
     private func persistDisabledSections() {

@@ -10,13 +10,16 @@ import SwiftUI
 /// Closes on Esc, click-away, swipe up, or pointer-exit (unless pinned).
 struct NotchView: View {
     @Bindable var viewModel: NotchViewModel
+    // System-wide models are shared across panels (PanelManager owns them);
+    // the command bar's text state stays per-panel.
+    let battery: BatteryMonitor
+    let clock: ClockModel
+    let calendar: CalendarModel
+    let shelf: ShelfStore
     @State private var commandBar = CommandBarViewModel()
-    @State private var battery = BatteryMonitor()
-    @State private var clock = ClockModel()
-    @State private var calendar = CalendarModel()
-    @State private var shelf = ShelfStore()
 
     @State private var gearHover = false
+    @State private var hoverTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let settings = AppSettingsStore.shared
 
@@ -39,11 +42,6 @@ struct NotchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onAppear {
-            battery.start()
-            clock.start()
-            calendar.start() // reads access + polls; never prompts (that waits for expand)
-        }
         .onChange(of: commandBar.shouldStayOpen) { _, active in
             viewModel.setPin(.commandBar, active)
         }
@@ -78,12 +76,29 @@ struct NotchView: View {
             .padding(.trailing, collapsedGap)
             .frame(width: viewModel.sideWidth, alignment: .trailing)
 
-            // The notch itself — hover (or click) to open.
-            Color.clear
-                .frame(width: viewModel.collapsedNotchWidth)
-                .contentShape(Rectangle())
-                .onHover { hovering in if hovering { viewModel.handle(.hoverEnter) } }
-                .onTapGesture { viewModel.handle(.tap) }
+            // The notch itself — dwell-hover (or click) to open. blendCollapsed
+            // off draws the island extension even while collapsed.
+            Group {
+                if settings.blendCollapsed {
+                    Color.clear
+                } else {
+                    NotchIslandBackground(state: .collapsed)
+                }
+            }
+            .frame(width: viewModel.collapsedNotchWidth)
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                hoverTask?.cancel()
+                hoverTask = nil
+                guard hovering else { return }
+                let dwell = settings.hoverDwell
+                hoverTask = Task {
+                    try? await Task.sleep(nanoseconds: UInt64(dwell * 1_000_000_000))
+                    guard !Task.isCancelled else { return }
+                    viewModel.handle(.hoverEnter)
+                }
+            }
+            .onTapGesture { viewModel.handle(.tap) }
 
             // Right of the notch: battery, hugging the camera.
             collapsedBattery
@@ -249,7 +264,13 @@ struct NotchView: View {
 }
 
 #Preview {
-    NotchView(viewModel: NotchViewModel())
-        .frame(width: 480, height: 220)
-        .background(Color.gray)
+    NotchView(
+        viewModel: NotchViewModel(),
+        battery: BatteryMonitor(),
+        clock: ClockModel(),
+        calendar: CalendarModel(),
+        shelf: ShelfStore()
+    )
+    .frame(width: 480, height: 220)
+    .background(Color.gray)
 }
