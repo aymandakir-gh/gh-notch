@@ -7,8 +7,9 @@ git history / CLAUDE.md.)
 ## Slices
 - [x] 0. Docs prep: PARITY-ROADMAP.md into docs/, PLAN/STATUS reset, CLAUDE.md
        verification-reality fix, tools/typecheck.sh (36 files OK locally)
-- [ ] A. Pure core: NotchState/NotchEvent/NotchStateMachine/PinReason/NotchLayout/
-       NotchMotion + tests
+- [x] A. Pure core: NotchState/NotchEvent/NotchStateMachine/PinReason/NotchLayout/
+       NotchMotion + 2 test suites (machine table incl. stale-timer/pin/priority
+       sweep; layout envelope/island/cap/pill/override)
 - [ ] B. Panel & animation unification: pre-sized panel, NotchShape, ViewModel on
        the state machine, SwiftUI-only morph
 - [ ] C. Section registry + content-driven expanded height (ScrollView, cap)
