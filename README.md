@@ -4,7 +4,7 @@
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange) ![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Status: alpha](https://img.shields.io/badge/status-alpha-orange) ![CI](https://github.com/aymandakir-gh/gh-notch/actions/workflows/ci.yml/badge.svg)
 
-> **Status: early alpha (v0.3).** The notch foundation, AI command bar, battery HUD, calendar (next event + today's agenda), and file shelf (drag-in, drag-out, AirDrop) are built and tested in CI. Media and a system HUD are on the roadmap below. Follow [Releases](https://github.com/aymandakir-gh/gh-notch/releases) to track progress.
+> **Status: alpha (v0.4 "The Morph").** The notch foundation, AI command bar, battery HUD, calendar, file shelf, swipe gestures, multi-display support, and a spring-driven state-machine core are built and tested in CI. Now Playing, custom HUDs, live activities, and notification mirroring are next — the full ladder to v1.0 lives in [docs/PARITY-ROADMAP.md](docs/PARITY-ROADMAP.md). Follow [Releases](https://github.com/aymandakir-gh/gh-notch/releases) to track progress.
 
 ---
 
@@ -111,13 +111,22 @@ Tracked release-by-release. ✅ = shipped, ⬜ = planned.
 
 ### v0.3 — Files & system
 - ✅ File Shelf — drag-in, drag-out, AirDrop, persistence across relaunch
-- ⬜ System HUD replacement (brightness / volume)
 
-### v0.4+ — Power user
-- ⬜ Streaming AI responses + recent-query history
-- ⬜ Extension system (third-party notch widgets)
-- ⬜ Voice commands
-- ⬜ Menu-bar companion
+### v0.4 — The Morph *(current)*
+- ✅ State-machine core (collapsed / peek / activity / HUD / expanded) with priority + auto-dismiss rules
+- ✅ Spring-driven island morph in a fixed panel (no window resizing), Reduce Motion respected
+- ✅ Swipe gestures — two-finger swipe down opens, up closes (trackpad + Magic Mouse)
+- ✅ Multi-display: built-in-only or all displays, pill on notchless screens, clamshell fallback
+- ✅ Settings tabs: launch at login, hover delay, notch-width override, per-feature toggles
+- ✅ Content-driven expanded height (scrolls past the cap), event-driven battery/calendar monitors
+
+### The road to v1.0 — free Alcove-parity ([full plan](docs/PARITY-ROADMAP.md))
+- ⬜ v0.5 Now Playing + audio visualizer
+- ⬜ v0.6 Customizable HUDs (volume / brightness / backlight / caps lock) + camera-mic privacy dots
+- ⬜ v0.7 Live activity engine (timers, downloads, device connect, calendar countdown)
+- ⬜ v0.8 Notification mirroring in the notch
+- ⬜ v0.9 Lock-screen widgets (experimental) + delight pass
+- ⬜ v1.0 Performance gate, streaming AI + history, launch
 
 ---
 

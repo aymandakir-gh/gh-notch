@@ -10,13 +10,16 @@ git history / CLAUDE.md.)
 - [x] A. Pure core: NotchState/NotchEvent/NotchStateMachine/PinReason/NotchLayout/
        NotchMotion + 2 test suites (machine table incl. stale-timer/pin/priority
        sweep; layout envelope/island/cap/pill/override)
-- [ ] B. Panel & animation unification: pre-sized panel, NotchShape, ViewModel on
-       the state machine, SwiftUI-only morph
-- [ ] C. Section registry + content-driven expanded height (ScrollView, cap)
-- [ ] D. Gestures: GestureRecognizerLogic (pure) + GestureMonitor + haptics
-- [ ] E. Multi-display PanelManager + no-notch pill + Settings tabs +
-       launch-at-login + poll→notification cleanups
-- [ ] F. Release prep: README, 0.4.0, CHANGELOG.md
+- [x] B. Panel & animation unification: pre-sized panel, NotchShape, ViewModel on
+       the state machine, SwiftUI-only morph, hitTest interactive rects — CI green
+- [x] C. Section registry (enum + pure SectionsLogic) + AppSettingsStore toggles
+       + content-driven expanded height — CI green
+- [x] D. Gestures: GestureRecognizerLogic (14 synthetic-stream tests) +
+       GestureMonitor + haptics — CI green
+- [x] E. Multi-display PanelManager (pure DisplaySelection + tests) + pill 185pt +
+       Settings tabs + launch-at-login + event-driven battery/calendar
+- [x] F. Release prep: README roadmap restructure, 0.4.0, CHANGELOG.md started,
+       cask → stable latest/download URL (was 404ing 0.1.0)
 - [ ] G. Adversarial review + fixes + regression tests
 - [ ] H. Tag v0.4.0 → DMG release
 
