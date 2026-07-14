@@ -101,10 +101,13 @@ struct NotchLayout: Equatable {
         }
     }
 
-    /// GeometryChange can briefly report non-finite values during layout churn;
-    /// treat them as zero so the island never becomes NaN-sized.
+    /// GeometryChange can briefly report non-finite values during layout churn.
+    /// NaN (undefined) collapses to zero so the island never becomes NaN-sized;
+    /// `+∞` (overflow) is left as-is so the caller's `min(_, maxExpandedContent…)`
+    /// clamps it to the cap exactly like any absurdly large finite height —
+    /// never to zero. `-∞` and negatives floor at zero.
     private func sanitizedContentHeight(_ contentHeight: CGFloat) -> CGFloat {
-        guard contentHeight.isFinite else { return 0 }
+        guard !contentHeight.isNaN else { return 0 }
         return max(contentHeight, 0)
     }
 }

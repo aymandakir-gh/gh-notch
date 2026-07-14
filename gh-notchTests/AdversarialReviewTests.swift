@@ -68,7 +68,6 @@ final class AdversarialReviewTests: XCTestCase {
     // MARK: - State machine + view model: stale timers
 
     func testStaleTimeoutNeverDismissesADifferentTransient() {
-        let peek = PeekContent(id: "p")
         let hud = NotchStateMachine.transition(from: .hud(.volume), on: .timeout(.peek))
         XCTAssertEqual(hud.next, .hud(.volume))
         XCTAssertNil(hud.autoDismissAfter)
