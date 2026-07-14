@@ -133,4 +133,20 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.hoverDwell, 0.5, accuracy: 0.001)
         defaults.removePersistentDomain(forName: suite)
     }
+
+    func testHoverDwellIsClampedOnSet() {
+        let suite = "test.appsettings.\(UUID().uuidString)"
+        let (store, defaults) = makeStore(suite: suite)
+
+        store.hoverDwell = 9.0    // above the 0.5 ceiling
+        XCTAssertEqual(store.hoverDwell, 0.5, accuracy: 0.001)
+
+        store.hoverDwell = -1.0   // below the 0 floor
+        XCTAssertEqual(store.hoverDwell, 0.0, accuracy: 0.001)
+
+        // the clamped value (not the raw input) is what persists across a reload
+        let reloaded = AppSettingsStore(defaults: defaults)
+        XCTAssertEqual(reloaded.hoverDwell, 0.0, accuracy: 0.001)
+        defaults.removePersistentDomain(forName: suite)
+    }
 }

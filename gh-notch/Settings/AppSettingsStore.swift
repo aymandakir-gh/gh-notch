@@ -35,7 +35,11 @@ final class AppSettingsStore {
     /// Seconds the pointer must dwell on the notch before hover expands the
     /// panel — kills accidental expansions from crossing the screen top.
     var hoverDwell: TimeInterval {
-        didSet { defaults.set(hoverDwell, forKey: Keys.hoverDwell) }
+        didSet {
+            let clamped = Self.clampDwell(hoverDwell)
+            if hoverDwell != clamped { hoverDwell = clamped } // in-didSet assignment does not recurse
+            defaults.set(hoverDwell, forKey: Keys.hoverDwell)
+        }
     }
 
     /// Manual notch/pill width in points; nil = automatic (sampled).
@@ -80,8 +84,14 @@ final class AppSettingsStore {
         self.showOnDisplays = defaults.string(forKey: Keys.showOnDisplays)
             .flatMap(ShowOnDisplays.init(rawValue:)) ?? .builtInOnly
         let dwell = defaults.object(forKey: Keys.hoverDwell) as? Double
-        self.hoverDwell = dwell.map { min(max($0, 0.0), 0.5) } ?? NotchMotion.defaultHoverDwell
+        self.hoverDwell = dwell.map(Self.clampDwell) ?? NotchMotion.defaultHoverDwell
         self.notchWidthOverride = defaults.object(forKey: Keys.notchWidthOverride) as? Double
+    }
+
+    /// Hover-dwell is bounded to [0, 0.5]s — enforced identically on load and on
+    /// assignment so an out-of-range write can't persist a bad value until relaunch.
+    private static func clampDwell(_ seconds: TimeInterval) -> TimeInterval {
+        min(max(seconds, 0.0), 0.5)
     }
 
     private func persistDisabledSections() {

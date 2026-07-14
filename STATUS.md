@@ -20,7 +20,11 @@ git history / CLAUDE.md.)
        Settings tabs + launch-at-login + event-driven battery/calendar
 - [x] F. Release prep: README roadmap restructure, 0.4.0, CHANGELOG.md started,
        cask → stable latest/download URL (was 404ing 0.1.0)
-- [ ] G. Adversarial review + fixes + regression tests
+- [x] G. Adversarial review (3 dimensions: state-machine/viewmodel, layout/
+       geometry/multi-display, gestures/sections/parsers) — **zero live defects**.
+       Fixed one live invariant asymmetry (hoverDwell setter now clamps to [0,0.5]
+       like load; +regression test testHoverDwellIsClampedOnSet). Two latent items
+       documented below (wide-notch expanded width, dead repositionToActiveScreen).
 - [ ] H. Tag v0.4.0 → DMG release
 
 ## Needs visual verification (no runnable build on this machine — burn down when
@@ -30,6 +34,18 @@ git history / CLAUDE.md.)
 - (carried v0.1.5) collapsed click-through on a real notched display
 
 ## Decisions / notes
+- 2026-07-14: Slice G latent findings (NOT live in v0.4 — recorded so they aren't lost):
+  - **Wide-notch expanded width** (`NotchLayout.islandSize`): for `notchWidth > 204`
+    a transient island computes WIDER than expanded, breaking the
+    collapsed≤transient≤expanded invariant. Unreachable today (peek/hud/activity are
+    never posted in v0.4) and it CONFLICTS with the deliberate
+    `testWiderNotchThanExpandedSurfaceWidensTheExpandedIsland` (expanded == notchWidth).
+    **Defer the design call to v0.5** (when transients ship): decide whether expanded
+    should track notchWidth or floor at `notchWidth + 2·transientWingWidth`, then
+    reconcile the two tests.
+  - **`NotchPanel.repositionToActiveScreen()` is dead code** (no caller; grep-confirmed).
+    Harmless now, but a multi-monitor foot-gun if wired into the `.all` flow — remove or
+    fix when multi-display placement is next touched.
 - 2026-07-13: Confirmed CommandLineTools-only on this machine (no Xcode.app).
   Added tools/typecheck.sh (full swiftc -typecheck vs CLT SDK) — stronger than
   the v0.1–v0.3 parse-only loop; XCTest still CI-only.
