@@ -1,10 +1,34 @@
-# STATUS — v0.4.0 "The Morph"
+# STATUS — v0.5.0 "Now Playing" (in progress) · v0.4.0 "The Morph" (shipped)
 
 Living progress log. See PLAN.md for the design, docs/PARITY-ROADMAP.md for the
-v0.4→v1.0 ladder. (v0.1.x polish, v0.2.0 Calendar, v0.3.0 File Shelf shipped —
-git history / CLAUDE.md.)
+v0.4→v1.0 ladder. (v0.1.x polish, v0.2.0 Calendar, v0.3.0 File Shelf, v0.4.0
+The Morph shipped — git history / CLAUDE.md / tags.)
 
-## Slices
+## v0.5 — Now Playing (PARITY-ROADMAP §3)
+- [x] A. Pure core (no I/O, CI-testable, clean-room per §9 — no GPL source opened):
+       `Features/NowPlaying/` — `NowPlayingState` (pure snapshot, `hasTrack`/
+       `trackIdentity`, elapsed/duration clamped ≥0); `NowPlayingLogic`
+       (playing-only elapsed interpolation clamped to duration + no-rewind on
+       clock skew; `progress`; `m:ss`/`h:mm:ss` `timeLabel`; wrap-around
+       `marqueeOffset` (0 when text fits / speed≤0 / container≤0); per-track
+       `artworkCacheKey` stable across scrub/pause — pre-empts Alcove's
+       dominant-color CPU leak; tolerant adapter JSON-line `parse` → optional-field
+       `NowPlayingPayload` (nil only on non-object; `{}`→empty; numbers-as-strings;
+       rate→playing; bad base64 drops only artwork) + diff-mode `applying` merge);
+       `NowPlayingSource` protocol (`updates: AsyncStream` + `probe()`) +
+       `FakeNowPlayingSource`. Tests: `NowPlayingLogicTests` (28),
+       `NowPlayingStateTests` + `FakeNowPlayingSourceTests`. `typecheck.sh` 52
+       files OK locally; XCTest gated to CI.
+- [ ] B. `NowPlayingModel` (@MainActor @Observable): source fallback chain
+       (adapter→direct MediaRemote→AppleScript), capture-time tracking, artwork
+       cache, control routing. **Real backends need a runnable build + hit the
+       signing/spend gate (Apple Developer $99 — Ayman's approval per house rules);
+       fake-driven model logic can land first.**
+- [ ] C–H. peek/expanded player + visualizer views, section wiring, adversarial
+       review, tagged DMG. Visual/private-API work blocked on Xcode.app (this
+       machine is CLT-only) + signing decision.
+
+## v0.4 Slices
 - [x] 0. Docs prep: PARITY-ROADMAP.md into docs/, PLAN/STATUS reset, CLAUDE.md
        verification-reality fix, tools/typecheck.sh (36 files OK locally)
 - [x] A. Pure core: NotchState/NotchEvent/NotchStateMachine/PinReason/NotchLayout/
