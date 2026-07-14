@@ -21,10 +21,16 @@ git history / CLAUDE.md.)
 - [x] F. Release prep: README roadmap restructure, 0.4.0, CHANGELOG.md started,
        cask → stable latest/download URL (was 404ing 0.1.0)
 - [x] G. Adversarial review (3 dimensions: state-machine/viewmodel, layout/
-       geometry/multi-display, gestures/sections/parsers) — **zero live defects**.
-       Fixed one live invariant asymmetry (hoverDwell setter now clamps to [0,0.5]
-       like load; +regression test testHoverDwellIsClampedOnSet). Two latent items
-       documented below (wide-notch expanded width, dead repositionToActiveScreen).
+       geometry/multi-display, gestures/sections/parsers) — **zero live defects**
+       after fixes below. `AdversarialReviewTests.swift` added (non-finite content
+       height, panel-envelope click-through rects, stale-timeout clock survival,
+       momentum-during-drain, multi-display/section edge cases). Fixed:
+       (1) `hoverDwell` setter now clamps to [0,0.5] like load (+regression in
+       `AppSettingsStoreTests`); (2) `NotchLayout` treats NaN content height as
+       zero so expanded island never becomes non-finite; (3) `NotchViewModel`
+       re-arms the dismiss clock when a stale `timeout` would orphan a transient.
+       Two latent items documented below (wide-notch expanded width, dead
+       `repositionToActiveScreen`).
 - [ ] H. Tag v0.4.0 → DMG release
 
 ## Needs visual verification (no runnable build on this machine — burn down when

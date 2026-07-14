@@ -104,6 +104,16 @@ final class NotchViewModel {
             cancelAutoDismiss()
         }
 
+        // A stale `timeout` the state machine ignores can orphan the dismiss clock:
+        // the completing task nils `dismissTask` before calling `handle`, and an
+        // ignored post leaves `autoDismissAfter` nil so nothing reschedules.
+        if case .timeout(let firedKind) = event,
+           let currentKind = transientKind(of: state),
+           firedKind != currentKind,
+           !hasPendingAutoDismiss {
+            scheduleAutoDismiss(kind: currentKind, after: duration(for: currentKind))
+        }
+
         if changed { onStateChange?(state) }
     }
 
@@ -169,6 +179,14 @@ final class NotchViewModel {
         case .hud: return .hud
         case .activity: return .activity
         case .collapsed, .expanded: return nil
+        }
+    }
+
+    private func duration(for kind: TransientKind) -> TimeInterval {
+        switch kind {
+        case .peek: return durations.peek
+        case .hud: return durations.hud
+        case .activity: return durations.activity
         }
     }
 

@@ -96,8 +96,15 @@ struct NotchLayout: Equatable {
                           height: geometry.notchHeight + metrics.transientExtraHeight)
         case .expanded:
             let width = min(max(metrics.expandedWidth, notchWidth), panelWidth)
-            let clamped = min(max(contentHeight, 0), maxExpandedContentHeight)
+            let clamped = min(sanitizedContentHeight(contentHeight), maxExpandedContentHeight)
             return CGSize(width: width, height: geometry.notchHeight + clamped)
         }
+    }
+
+    /// GeometryChange can briefly report non-finite values during layout churn;
+    /// treat them as zero so the island never becomes NaN-sized.
+    private func sanitizedContentHeight(_ contentHeight: CGFloat) -> CGFloat {
+        guard contentHeight.isFinite else { return 0 }
+        return max(contentHeight, 0)
     }
 }
