@@ -97,15 +97,19 @@ enum ActivityCenterLogic {
         )
     }
 
-    /// Bring a dismissed activity back into the active set (frontmost).
-    /// No-op if the id isn't in the dismissed set.
+    /// Bring a dismissed activity back into the active set and focus it. Restore
+    /// is an explicit user action on a specific item, so it surfaces that item
+    /// (`cycleIndex` points at it) even if a higher-priority activity is
+    /// active — unlike automatic `posting`, where priority governs the front
+    /// slot. No-op if the id isn't in the dismissed set.
     static func restoring(id: String, in state: State) -> State {
         guard let revived = state.dismissed.first(where: { $0.id == id }) else {
             return state
         }
         let dismissed = state.dismissed.filter { $0.id != id }
-        let active = state.active.filter { $0.id != id } + [revived]
-        return State(active: ordered(active), dismissed: dismissed, cycleIndex: 0)
+        let active = ordered(state.active.filter { $0.id != id } + [revived])
+        let index = active.firstIndex { $0.id == id } ?? 0
+        return State(active: active, dismissed: dismissed, cycleIndex: index)
     }
 
     /// Clamp a cycle index into a list of `count` items (0 when empty).
