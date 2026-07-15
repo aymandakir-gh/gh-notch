@@ -19,11 +19,14 @@ The Morph shipped — git history / CLAUDE.md / tags.)
        `FakeNowPlayingSource`. Tests: `NowPlayingLogicTests` (28),
        `NowPlayingStateTests` + `FakeNowPlayingSourceTests`. `typecheck.sh` 52
        files OK locally; XCTest gated to CI.
-- [ ] B. `NowPlayingModel` (@MainActor @Observable): source fallback chain
-       (adapter→direct MediaRemote→AppleScript), capture-time tracking, artwork
-       cache, control routing. **Real backends need a runnable build + hit the
-       signing/spend gate (Apple Developer $99 — Ayman's approval per house rules);
-       fake-driven model logic can land first.**
+- [x] B (pure part). `NowPlayingSourceSelection` — pure fallback-chain policy:
+       `NowPlayingBackend` (adapter→direct→appleScript); `select`/`reselect`
+       (prefer top-of-chain available; recovery == failover); `directMediaRemote-
+       Eligible` (< 15.4). 9 tests, verified via swift (b4e23ec).
+- [ ] B (gated part). `NowPlayingModel` (@MainActor @Observable) real backends:
+       subprocess supervision, capture-time tracking, artwork cache, control
+       routing. **Needs a runnable build + the signing/spend gate (Apple Developer
+       $99 — Ayman's approval).**
 - [ ] C–H. peek/expanded player + visualizer views, section wiring, adversarial
        review, tagged DMG. Visual/private-API work blocked on Xcode.app (this
        machine is CLT-only) + signing decision.
@@ -38,6 +41,11 @@ The Morph shipped — git history / CLAUDE.md / tags.)
        (burst→1/kind). `HUDLogicTests` (all 7 codes + up/repeat/unknown/bad/neg,
        kind map, segment rounding, glow, percent, step, coalesce). Reuses existing
        `HUDKind`. typecheck 54 files OK; bit-math cross-checked via swiftc.
+- [x] A2. `InterceptSafety` — pure per-key-class fail-safe: a swallowed key with
+       no value change (and not at a rail) counts as a failure; two in a row backs
+       off interception for that class until device-change/tap re-arm, so the user
+       can never be locked out of volume. at-rail no-ops immune. 7 tests, verified
+       via swift (db4dcfd).
 - [ ] B–H. MediaKeyInterceptor (CGEvent tap — **Accessibility TCC-gated**),
        Audio/Brightness/CapsLock/Privacy sources (CoreAudio public + DisplayServices
        private via dlopen), HUD views. Hardware + AX-gated → later slices.
