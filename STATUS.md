@@ -28,6 +28,33 @@ The Morph shipped — git history / CLAUDE.md / tags.)
        review, tagged DMG. Visual/private-API work blocked on Xcode.app (this
        machine is CLT-only) + signing decision.
 
+## v0.6 — HUD replacement (PARITY-ROADMAP §4)
+- [x] A. Pure core (clean-room, CI-testable, §9): `Features/HUD/` — `HUDEvent` +
+       `MediaKey` + `HUDKeyPress`; `HUDLogic` = `parseSystemDefinedKey` (NX `data1`
+       bit-math: keyCode>>16, state 0x0A down/0x0B up, bit0 repeat → media key;
+       nil on unknown code / bad state / negative), `hudKind(for:)`,
+       `filledSegments` (rounded/clamped/guards total≤0), `glowStage` (green→red
+       past 80%), `percentText`, `step` (1/16 or 1/64 fine), `coalesceLatestPerKind`
+       (burst→1/kind). `HUDLogicTests` (all 7 codes + up/repeat/unknown/bad/neg,
+       kind map, segment rounding, glow, percent, step, coalesce). Reuses existing
+       `HUDKind`. typecheck 54 files OK; bit-math cross-checked via swiftc.
+- [ ] B–H. MediaKeyInterceptor (CGEvent tap — **Accessibility TCC-gated**),
+       Audio/Brightness/CapsLock/Privacy sources (CoreAudio public + DisplayServices
+       private via dlopen), HUD views. Hardware + AX-gated → later slices.
+
+## v0.7 — Live Activity engine (PARITY-ROADMAP §5)
+- [x] A. Pure core (clean-room, CI-testable, §5 is ~70% this): `Features/Activities/`
+       — `Activity` (kind/priority/title/progress/postedAt/expiresAt/DismissBehavior,
+       clamped progress); `ActivityCenterLogic` (`ordered` priority desc→recency→id;
+       `frontmost` = active[cycleIndex]; `posting` coalesce+revive+preempt;
+       `cycled` wrap; `dismissingFrontmost` remove|restorable + clamp; `expiring`
+       hard-deadline keep-sticky; `restoring` = explicit focus-the-item). Times are
+       injected `TimeInterval`, no `Date`. `ActivityCenterLogicTests` (23 incl.
+       preemption both ways, cycle wrap+reset, dismiss/restore/revive, expiry clamp).
+       CI caught + fixed a restore-focus ambiguity (f2480c7). typecheck 56 files OK.
+- [ ] B–H. `@MainActor @Observable ActivityCenter` shell + providers (battery/
+       device/focus/timer/download/screenRec/calendar) — source-gated later slices.
+
 ## v0.4 Slices
 - [x] 0. Docs prep: PARITY-ROADMAP.md into docs/, PLAN/STATUS reset, CLAUDE.md
        verification-reality fix, tools/typecheck.sh (36 files OK locally)
