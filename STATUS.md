@@ -52,6 +52,11 @@ The Morph shipped — git history / CLAUDE.md / tags.)
        injected `TimeInterval`, no `Date`. `ActivityCenterLogicTests` (23 incl.
        preemption both ways, cycle wrap+reset, dismiss/restore/revive, expiry clamp).
        CI caught + fixed a restore-focus ambiguity (f2480c7). typecheck 56 files OK.
+- [x] (synergy, ahead of §8.2) `Features/Activities/TimerParsing.swift` — pure
+       offline `timer 10m coffee` → (duration, label) parser feeding the future
+       TimerProvider + AI-bar. Attached/bare/spaced/long units, 24h clamp,
+       keyword-gated. `TimerParsingTests`. Behaviorally verified: real source
+       compiled standalone via `swift` against 19 cases (25ab3ec, CI green).
 - [ ] B–H. `@MainActor @Observable ActivityCenter` shell + providers (battery/
        device/focus/timer/download/screenRec/calendar) — source-gated later slices.
 
