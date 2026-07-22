@@ -22,7 +22,7 @@ gh-notch is built privacy-first:
 Please report security issues **privately** — do **not** open a public issue.
 
 1. Email **opensource@growthackers.io** with a description and reproduction steps, or
-2. Use GitHub's [private vulnerability reporting](https://github.com/aymandakir-gh/gh-notch/security/advisories/new).
+2. Use GitHub's [private vulnerability reporting](https://github.com/aymandakirgh/ghnotch/security/advisories/new).
 
 We aim to acknowledge reports within 5 business days and to ship a fix or mitigation
 as quickly as the issue's severity warrants. We'll credit you in the release notes

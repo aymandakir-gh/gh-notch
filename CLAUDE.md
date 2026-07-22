@@ -55,7 +55,7 @@ next-event chip + an expanded "Today" agenda with empty/denied states. NSCalenda
 + a calendar entitlement are wired. EventKit access is requested only when the panel is expanded.
 
 ### Previous state (v0.1.5)
-Functional: flanking collapsed status, hover/click open, auto-hide, command bar (local + remote), Settings, battery, clock. CI (build+test+lint) and Release (tag `v*` → DMG → Homebrew tap `aymandakir-gh/tap`) pipelines work. DMG is **unsigned** (right-click → Open) until there's a paid Apple Developer account — see `RELEASING.md`.
+Functional: flanking collapsed status, hover/click open, auto-hide, command bar (local + remote), Settings, battery, clock. CI (build+test+lint) and Release (tag `v*` → DMG → Homebrew tap `aymandakirgh/tap`) pipelines work. DMG is **unsigned** (right-click → Open) until there's a paid Apple Developer account — see `RELEASING.md`.
 
 v0.1.5 polish pass shipped: real app icon (generated in `tools/AppIconGenerator/`); tighter, click-through collapsed placement (`sideWidth = 96`); premium dropdown (drop-from-notch animation, softer corners, gear hover, consistent rounded/monospaced numerals); command bar with live on-device preview, copy button, empty-state hint chips, and new local commands (reverse, base64/unbase64, `<n>% of <m>`). Also fixed: xcodegen Info.plist version clobber, so the DMG reports `MARKETING_VERSION`.
 

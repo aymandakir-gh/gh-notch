@@ -53,7 +53,7 @@ Before opening a pull request, make sure:
 
 ## Reporting bugs
 
-Open an [Issue](https://github.com/aymandakir-gh/gh-notch/issues) with:
+Open an [Issue](https://github.com/aymandakirgh/ghnotch/issues) with:
 - macOS version
 - Mac model (notch size matters)
 - Steps to reproduce

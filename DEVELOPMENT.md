@@ -20,8 +20,8 @@ This guide covers everything you need to build gh-notch from source and contribu
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/aymandakir-gh/gh-notch.git
-cd gh-notch
+git clone https://github.com/aymandakirgh/ghnotch.git
+cd ghnotch
 
 # 2. Generate the Xcode project from project.yml
 xcodegen generate

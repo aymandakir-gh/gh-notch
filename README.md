@@ -2,9 +2,9 @@
 
 **Your Mac's notch, reimagined. AI commands + media + calendar + file shelf — all in one place. Free. Open source. MIT.**
 
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange) ![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Status: alpha](https://img.shields.io/badge/status-alpha-orange) ![CI](https://github.com/aymandakir-gh/gh-notch/actions/workflows/ci.yml/badge.svg)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange) ![License: MIT](https://img.shields.io/badge/license-MIT-green) ![Status: alpha](https://img.shields.io/badge/status-alpha-orange) ![CI](https://github.com/aymandakirgh/ghnotch/actions/workflows/ci.yml/badge.svg)
 
-> **Status: alpha (v0.4 "The Morph").** The notch foundation, AI command bar, battery HUD, calendar, file shelf, swipe gestures, multi-display support, and a spring-driven state-machine core are built and tested in CI. Now Playing, custom HUDs, live activities, and notification mirroring are next — the full ladder to v1.0 lives in [docs/PARITY-ROADMAP.md](docs/PARITY-ROADMAP.md). Follow [Releases](https://github.com/aymandakir-gh/gh-notch/releases) to track progress.
+> **Status: alpha (v0.4 "The Morph").** The notch foundation, AI command bar, battery HUD, calendar, file shelf, swipe gestures, multi-display support, and a spring-driven state-machine core are built and tested in CI. Now Playing, custom HUDs, live activities, and notification mirroring are next — the full ladder to v1.0 lives in [docs/PARITY-ROADMAP.md](docs/PARITY-ROADMAP.md). Follow [Releases](https://github.com/aymandakirgh/ghnotch/releases) to track progress.
 
 ---
 
@@ -62,7 +62,7 @@ Replaces the default macOS brightness/volume overlay with a sleek notch-native H
 
 ### Download the app
 
-Grab the latest `.dmg` from the [**Releases**](https://github.com/aymandakir-gh/gh-notch/releases) page. Each tagged version is built automatically by CI.
+Grab the latest `.dmg` from the [**Releases**](https://github.com/aymandakirgh/ghnotch/releases) page. Each tagged version is built automatically by CI.
 
 > **Early builds are unsigned.** Until the project is code-signed and notarized (tracked in [RELEASING.md](RELEASING.md)), macOS Gatekeeper will warn on first launch. To open an unsigned build: **right-click the app → Open → Open**. You only do this once.
 
@@ -71,7 +71,7 @@ Grab the latest `.dmg` from the [**Releases**](https://github.com/aymandakir-gh/
 A Homebrew cask ships in [`Casks/gh-notch.rb`](Casks/gh-notch.rb). Once the first release is published it can be installed via a tap:
 
 ```bash
-brew tap aymandakir-gh/tap
+brew tap aymandakirgh/tap https://github.com/aymandakirgh/homebrewtap
 brew install --cask gh-notch
 ```
 
@@ -80,8 +80,8 @@ brew install --cask gh-notch
 ### Build from source
 
 ```bash
-git clone https://github.com/aymandakir-gh/gh-notch.git
-cd gh-notch
+git clone https://github.com/aymandakirgh/ghnotch.git
+cd ghnotch
 brew install xcodegen      # the .xcodeproj is generated, not committed
 xcodegen generate
 open gh-notch.xcodeproj     # Xcode 16+

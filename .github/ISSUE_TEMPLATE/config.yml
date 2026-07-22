@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions & ideas (Discussions)
-    url: https://github.com/aymandakir-gh/gh-notch/discussions
+    url: https://github.com/aymandakirgh/ghnotch/discussions
     about: Ask a question, share an idea, or discuss an approach before opening an issue.
   - name: New to the codebase?
-    url: https://github.com/aymandakir-gh/gh-notch/blob/main/docs/ARCHITECTURE.md
+    url: https://github.com/aymandakirgh/ghnotch/blob/main/docs/ARCHITECTURE.md
     about: Read the code map and "how to extend gh-notch" recipes first — it answers most "where do I change X?" questions.
